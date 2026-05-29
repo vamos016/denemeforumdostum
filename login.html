@@ -10,7 +10,21 @@
 </head>
 <body class="auth-body">
 
+<div class="auth-shell">
+
+<div class="brand-panel">
+<div class="brand-content">
+<h1><span class="neon">LOGIN</span><br>ACCESS</h1>
+<div class="terminal">
+&gt; auth.module.ready<br>
+&gt; session.waiting<br>
+&gt; user.verify
+</div>
+</div>
+</div>
+
 <div class="auth-card">
+<img src="logo.png" class="auth-logo">
 <div class="logo" style="text-align:center">ZERONIX</div>
 <div class="logo-sub" style="text-align:center">LOGIN // AUTH</div>
 
@@ -28,6 +42,8 @@ Hesabın yok mu? Kayıt ol
 </a>
 </div>
 
+</div>
+
 <script>
 async function login(){
 const email=document.getElementById("email").value.trim();
@@ -40,13 +56,12 @@ return;
 
 result.innerText="Giriş kontrol ediliyor...";
 
-const {error}=await supabaseClient.auth.signInWithPassword({
-email,
-password
-});
+const {error}=await supabaseClient.auth.signInWithPassword({email,password});
 
 if(error){
-result.innerText=error.message;
+result.innerText=error.message==="Invalid login credentials"
+?"E-posta veya şifre hatalı. Hesap yoksa önce kayıt ol."
+:error.message;
 return;
 }
 

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Yeni Konu Aç</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+<div class="logo">VForum</div>
+<div class="menu">
+<a href="forum.html">🏠 Ana Sayfa</a>
+<a href="new-topic.html">➕ Konu Aç</a>
+<a href="profile.html">👤 Profil</a>
+<button onclick="logout()">🚪 Çıkış Yap</button>
+</div>
+</aside>
+
+<main class="main">
+<div class="topbar">
+<h2>Yeni Konu Aç</h2>
+</div>
+
+<div class="card">
+<input id="title" placeholder="Konu başlığı">
+<select id="category">
+<option value="">Kategori seç</option>
+</select>
+<textarea id="content" placeholder="Konunu yaz... Kod bloğu, açıklama, soru vs."></textarea>
+<button class="btn" onclick="createTopic()">Konuyu Yayınla</button>
+<p id="result" class="meta"></p>
+</div>
+</main>
+
+<aside class="rightbar">
+<div class="card">
+<h3>İpucu</h3>
+<p class="meta">Başlığı net yaz, konu daha çok cevap alır.</p>
+</div>
+</aside>
+</div>
+
+<script>
+let currentUser=null;
+
+async function init(){
+const {data:{user}}=await supabaseClient.auth.getUser();
+if(!user){location.href="login.html";return;}
+currentUser=user;
+loadCategories();
+}
+
+async function loadCategories(){
+const {data}=await supabaseClient.from("categories").select("*").order("id");
+category.innerHTML='<option value="">Kategori seç</option>'+(data||[]).map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
+}
+
+async function createTopic(){
+const title=document.getElementById("title").value.trim();
+const content=document.getElementById("content").value.trim();
+const category_id=document.getElementById("category").value||null;
+
+if(!title||!content){result.innerText="Başlık ve içerik zorunlu.";return;}
+
+const {error}=await supabaseClient.from("topics").insert({
+user_id:currentUser.id,
+category_id,
+title,
+content
+});
+
+if(error){result.innerText=error.message;return;}
+result.innerText="Konu açıldı.";
+setTimeout(()=>location.href="forum.html",700);
+}
+
+async function logout(){
+await supabaseClient.auth.signOut();
+location.href="index.html";
+}
+
+init();
+</script>
+</body>
+</html>

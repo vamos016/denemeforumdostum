@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Profil</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+<div class="logo">VForum</div>
+<div class="menu">
+<a href="forum.html">🏠 Ana Sayfa</a>
+<a href="new-topic.html">➕ Konu Aç</a>
+<a href="profile.html">👤 Profil</a>
+<button onclick="logout()">🚪 Çıkış Yap</button>
+</div>
+</aside>
+
+<main class="main">
+<div class="card">
+<h2>Profilim</h2>
+<input id="username" placeholder="Kullanıcı adı">
+<textarea id="bio" placeholder="Biyografi"></textarea>
+<input id="avatar_url" placeholder="Profil fotoğrafı URL">
+<button class="btn" onclick="saveProfile()">Profili Kaydet</button>
+<p id="result" class="meta"></p>
+</div>
+
+<div class="card profile-box">
+<img id="avatarPreview" class="avatar">
+<h3 id="namePreview">Kullanıcı</h3>
+<p id="bioPreview" class="meta"></p>
+<p class="meta">Seviye: <span id="levelPreview">1</span></p>
+<p class="meta">Rozetler: <span id="badgesPreview">Yeni Üye</span></p>
+</div>
+</main>
+
+<aside class="rightbar">
+<div class="card">
+<h3>Rozetler</h3>
+<p class="meta">Yeni Üye, Aktif Üye, Yardımsever, Efsane</p>
+</div>
+</aside>
+</div>
+
+<script>
+let currentUser=null;
+
+async function init(){
+const {data:{user}}=await supabaseClient.auth.getUser();
+if(!user){location.href="login.html";return;}
+currentUser=user;
+loadProfile();
+}
+
+async function loadProfile(){
+let {data}=await supabaseClient.from("profiles").select("*").eq("id",currentUser.id).single();
+
+if(!data){
+await supabaseClient.from("profiles").insert({
+id:currentUser.id,
+username:currentUser.email.split("@")[0],
+bio:"Yeni VForum üyesi",
+level:1,
+xp:0,
+badges:["Yeni Üye"]
+});
+let res=await supabaseClient.from("profiles").select("*").eq("id",currentUser.id).single();
+data=res.data;
+}
+
+username.value=data.username||"";
+bio.value=data.bio||"";
+avatar_url.value=data.avatar_url||"";
+avatarPreview.src=data.avatar_url||"https://api.dicebear.com/8.x/thumbs/svg?seed="+encodeURIComponent(data.username||"user");
+namePreview.innerText=data.username||"Kullanıcı";
+bioPreview.innerText=data.bio||"";
+levelPreview.innerText=data.level||1;
+badgesPreview.innerText=(data.badges||["Yeni Üye"]).join(", ");
+}
+
+async function saveProfile(){
+const {error}=await supabaseClient.from("profiles").update({
+username:username.value.trim(),
+bio:bio.value.trim(),
+avatar_url:avatar_url.value.trim()
+}).eq("id",currentUser.id);
+
+if(error){result.innerText=error.message;return;}
+result.innerText="Profil kaydedildi.";
+loadProfile();
+}
+
+async function logout(){
+await supabaseClient.auth.signOut();
+location.href="index.html";
+}
+
+init();
+</script>
+</body>
+</html>

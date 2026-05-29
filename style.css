@@ -366,3 +366,94 @@ pre{background:#050505;border:1px solid #3a0b14;color:#ff6b88;padding:14px;borde
 .hero{padding:20px}
 .stats-grid{grid-template-columns:1fr}
 }
+/* MOBİL DÜZELTME */
+
+@media screen and (max-width:768px){
+
+.auth-shell{
+display:block !important;
+max-width:100% !important;
+}
+
+.brand-panel{
+display:none !important;
+}
+
+.auth-body{
+padding:12px !important;
+min-height:100vh !important;
+display:flex !important;
+align-items:center !important;
+justify-content:center !important;
+}
+
+.auth-card{
+width:100% !important;
+max-width:420px !important;
+padding:22px !important;
+margin:auto !important;
+border-radius:20px !important;
+}
+
+.auth-logo{
+width:85px !important;
+height:85px !important;
+margin-bottom:12px !important;
+}
+
+.auth-card h2{
+font-size:22px !important;
+}
+
+.auth-card p{
+font-size:13px !important;
+}
+
+input{
+height:48px !important;
+font-size:15px !important;
+}
+
+.btn{
+height:48px !important;
+font-size:15px !important;
+}
+
+.logo{
+font-size:26px !important;
+}
+
+.logo-sub{
+font-size:11px !important;
+}
+
+.hero{
+padding:18px !important;
+}
+
+.hero h1{
+font-size:24px !important;
+}
+
+.sidebar{
+position:relative !important;
+height:auto !important;
+}
+
+.rightbar{
+display:none !important;
+}
+
+.layout{
+grid-template-columns:1fr !important;
+}
+
+.stats-grid{
+grid-template-columns:1fr !important;
+}
+
+.card{
+padding:14px !important;
+}
+
+}

@@ -3,35 +3,139 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mesajlar</title>
+<title>Mesajlar - Zeronix</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 </head>
 <body>
+
 <div class="layout">
+
 <aside class="sidebar">
-<div class="logo">VForum</div>
+<div class="logo">ZERONIX</div>
+<div class="logo-sub">PRIVATE MSG // LIVE</div>
+
 <div class="menu">
-<a href="forum.html">🏠 Ana Sayfa</a>
+<a href="forum.html">🏠 Ana Panel</a>
+<a href="new-topic.html">➕ Konu Aç</a>
 <a href="profile.html">👤 Profil</a>
 <a href="messages.html">💬 Mesajlar</a>
+<a href="admin.html">🛡️ Kontrol Paneli</a>
+<button onclick="logout()">🚪 Çıkış Yap</button>
 </div>
 </aside>
 
 <main class="main">
+
+<section class="hero">
+<h1><span class="neon">ÖZEL</span> MESAJLAR</h1>
+<p>Kullanıcılar arası özel mesaj paneli.</p>
+<div class="terminal">&gt; dm.channel.ready</div>
+</section>
+
 <div class="card">
-<h2>Özel Mesaj Demo</h2>
-<p class="meta">Bu bölüm arayüz olarak hazır. Kullanıcı arama ve alıcı ID sistemi sonraki aşamada bağlanır.</p>
-<input placeholder="Alıcı kullanıcı ID">
-<textarea placeholder="Mesajını yaz..."></textarea>
-<button class="btn">Mesaj Gönder</button>
+<h2>Mesaj Gönder</h2>
+
+<input id="receiver" placeholder="Alıcı kullanıcı UUID">
+<textarea id="messageText" placeholder="Mesajını yaz..."></textarea>
+
+<button class="btn" onclick="sendMessage()">Mesaj Gönder</button>
+<p id="result" class="meta"></p>
 </div>
+
+<h2 style="margin:18px 0">Gelen / Giden Mesajlar</h2>
+<div id="messagesList"></div>
+
 </main>
 
 <aside class="rightbar">
-<div class="card"><h3>Canlı Mesaj</h3><p class="meta">Realtime sistemi eklenebilir.</p></div>
-</aside>
+<div class="card">
+<h3>📌 Kullanıcı ID Nasıl Bulunur?</h3>
+<p class="meta">Şimdilik alıcı UUID girilir. Sonraki aşamada kullanıcı adıyla arama eklenir.</p>
 </div>
+
+<div class="card">
+<h3>⚡ Durum</h3>
+<p class="meta">Mesaj veritabanına kaydedilir.</p>
+<p class="meta">Realtime canlı sohbet sonraki aşamada eklenir.</p>
+</div>
+</aside>
+
+</div>
+
+<script>
+let currentUser=null;
+
+async function init(){
+const {data:{user}}=await supabaseClient.auth.getUser();
+
+if(!user){
+location.href="login.html";
+return;
+}
+
+currentUser=user;
+loadMessages();
+}
+
+async function sendMessage(){
+const receiver_id=receiver.value.trim();
+const content=messageText.value.trim();
+
+if(!receiver_id || !content){
+result.innerText="Alıcı ID ve mesaj zorunlu.";
+return;
+}
+
+const {error}=await supabaseClient.from("messages").insert({
+sender_id:currentUser.id,
+receiver_id,
+content
+});
+
+if(error){
+result.innerText=error.message;
+return;
+}
+
+messageText.value="";
+result.innerText="Mesaj gönderildi.";
+loadMessages();
+}
+
+async function loadMessages(){
+const {data,error}=await supabaseClient
+.from("messages")
+.select("*")
+.or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
+.order("created_at",{ascending:false});
+
+if(error){
+messagesList.innerHTML="<div class='card'>"+escapeHtml(error.message)+"</div>";
+return;
+}
+
+messagesList.innerHTML=(data||[]).map(m=>`
+<div class="card">
+<span class="badge">${m.sender_id===currentUser.id ? "Giden" : "Gelen"}</span>
+<p style="white-space:pre-wrap;margin-top:12px">${escapeHtml(m.content)}</p>
+<div class="meta">${new Date(m.created_at).toLocaleString("tr-TR")}</div>
+</div>
+`).join("") || "<div class='card empty'>Henüz mesaj yok.</div>";
+}
+
+async function logout(){
+await supabaseClient.auth.signOut();
+location.href="index.html";
+}
+
+function escapeHtml(text){
+return String(text||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
+}
+
+init();
+</script>
+
 </body>
 </html>

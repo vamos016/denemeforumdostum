@@ -3,45 +3,86 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Yeni Konu Aç</title>
+<title>Yeni Konu Aç - Zeronix</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 </head>
 <body>
+
 <div class="layout">
+
 <aside class="sidebar">
-<div class="logo">VForum</div>
+<div class="logo">ZERONIX</div>
+<div class="logo-sub">NEW THREAD // ACCESS</div>
+
 <div class="menu">
-<a href="forum.html">🏠 Ana Sayfa</a>
+<a href="forum.html">🏠 Ana Panel</a>
 <a href="new-topic.html">➕ Konu Aç</a>
 <a href="profile.html">👤 Profil</a>
+<a href="messages.html">💬 Mesajlar</a>
+<a href="admin.html">🛡️ Kontrol Paneli</a>
 <button onclick="logout()">🚪 Çıkış Yap</button>
 </div>
 </aside>
 
 <main class="main">
-<div class="topbar">
-<h2>Yeni Konu Aç</h2>
-</div>
+
+<section class="hero">
+<h1><span class="neon">KONU</span> OLUŞTUR</h1>
+<p>Başlık, kategori, etiket ve içerik girerek yeni paylaşım başlat.</p>
+<div class="terminal">&gt; thread.create --status ready</div>
+</section>
 
 <div class="card">
+<h2>Yeni Konu</h2>
+
 <input id="title" placeholder="Konu başlığı">
+
 <select id="category">
 <option value="">Kategori seç</option>
 </select>
-<textarea id="content" placeholder="Konunu yaz... Kod bloğu, açıklama, soru vs."></textarea>
-<button class="btn" onclick="createTopic()">Konuyu Yayınla</button>
+
+<input id="tags" placeholder="Etiketler: web, linux, ctf, tools">
+
+<textarea id="content" placeholder="İçeriğini yaz...
+
+Kod bloğu örneği:
+```js
+console.log('Zeronix');
+```"></textarea>
+
+<div class="actions">
+<button class="btn" onclick="createTopic()">🚀 Yayınla</button>
+<a class="btn" href="forum.html" style="background:#1f2937;box-shadow:none">Geri Dön</a>
+</div>
+
 <p id="result" class="meta"></p>
 </div>
+
 </main>
 
 <aside class="rightbar">
 <div class="card">
-<h3>İpucu</h3>
-<p class="meta">Başlığı net yaz, konu daha çok cevap alır.</p>
+<h3>📌 Konu İpuçları</h3>
+<p class="meta">Başlığı kısa ve net yaz.</p>
+<p class="meta">Kod paylaşacaksan ``` kod bloğu kullan.</p>
+<p class="meta">Etiket eklemek aramada öne çıkarır.</p>
+</div>
+
+<div class="card">
+<h3>🏷️ Popüler Etiketler</h3>
+<div class="quick-tags">
+<span>#web</span>
+<span>#network</span>
+<span>#linux</span>
+<span>#ctf</span>
+<span>#crypto</span>
+<span>#tools</span>
+</div>
 </div>
 </aside>
+
 </div>
 
 <script>
@@ -49,33 +90,84 @@ let currentUser=null;
 
 async function init(){
 const {data:{user}}=await supabaseClient.auth.getUser();
-if(!user){location.href="login.html";return;}
+if(!user){
+location.href="login.html";
+return;
+}
 currentUser=user;
 loadCategories();
 }
 
 async function loadCategories(){
-const {data}=await supabaseClient.from("categories").select("*").order("id");
-category.innerHTML='<option value="">Kategori seç</option>'+(data||[]).map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
+const {data,error}=await supabaseClient
+.from("categories")
+.select("*")
+.order("id");
+
+if(error){
+category.innerHTML="<option>Kategori yüklenemedi</option>";
+return;
+}
+
+category.innerHTML='<option value="">Kategori seç</option>'+(data||[]).map(c=>`
+<option value="${c.id}">${c.name}</option>
+`).join("");
 }
 
 async function createTopic(){
 const title=document.getElementById("title").value.trim();
 const content=document.getElementById("content").value.trim();
-const category_id=document.getElementById("category").value||null;
+const category_id=document.getElementById("category").value || null;
 
-if(!title||!content){result.innerText="Başlık ve içerik zorunlu.";return;}
+if(!title || !content){
+result.innerText="Başlık ve içerik zorunlu.";
+return;
+}
+
+result.innerText="Konu gönderiliyor...";
 
 const {error}=await supabaseClient.from("topics").insert({
 user_id:currentUser.id,
 category_id,
 title,
-content
+content,
+likes:0,
+dislikes:0,
+views:0,
+pinned:false,
+solved:false
 });
 
-if(error){result.innerText=error.message;return;}
-result.innerText="Konu açıldı.";
-setTimeout(()=>location.href="forum.html",700);
+if(error){
+result.innerText=error.message;
+return;
+}
+
+await giveXp(20);
+
+result.innerText="Konu başarıyla açıldı.";
+setTimeout(()=>location.href="forum.html",800);
+}
+
+async function giveXp(amount){
+const {data}=await supabaseClient
+.from("profiles")
+.select("*")
+.eq("id",currentUser.id)
+.single();
+
+if(!data)return;
+
+const newXp=(data.xp||0)+amount;
+const newLevel=Math.max(1,Math.floor(newXp/100)+1);
+
+await supabaseClient
+.from("profiles")
+.update({
+xp:newXp,
+level:newLevel
+})
+.eq("id",currentUser.id);
 }
 
 async function logout(){
@@ -85,5 +177,6 @@ location.href="index.html";
 
 init();
 </script>
+
 </body>
 </html>

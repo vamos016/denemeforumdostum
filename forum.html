@@ -2,197 +2,99 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>VForum</title>
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Forum</title>
+<link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
-
-<style>
-
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-font-family:Arial,sans-serif;
-}
-
-body{
-background:#0f172a;
-color:white;
-display:flex;
-height:100vh;
-}
-
-.sidebar{
-width:260px;
-background:#111827;
-padding:20px;
-border-right:1px solid #1f2937;
-}
-
-.logo{
-font-size:26px;
-font-weight:bold;
-margin-bottom:30px;
-}
-
-.menu button{
-width:100%;
-padding:12px;
-margin-bottom:10px;
-background:#1e293b;
-border:none;
-color:white;
-border-radius:10px;
-cursor:pointer;
-}
-
-.menu button:hover{
-background:#2563eb;
-}
-
-.main{
-flex:1;
-padding:25px;
-overflow:auto;
-}
-
-.topbar{
-display:flex;
-justify-content:space-between;
-align-items:center;
-margin-bottom:25px;
-}
-
-.userbox{
-background:#1e293b;
-padding:10px 15px;
-border-radius:10px;
-}
-
-.topic-box{
-background:#1e293b;
-padding:20px;
-border-radius:15px;
-margin-bottom:15px;
-}
-
-.topic-title{
-font-size:20px;
-font-weight:bold;
-margin-bottom:10px;
-}
-
-.create-btn{
-background:#2563eb;
-border:none;
-padding:12px 20px;
-border-radius:10px;
-color:white;
-cursor:pointer;
-}
-
-.logout{
-background:#dc2626;
-border:none;
-padding:10px 15px;
-border-radius:10px;
-color:white;
-cursor:pointer;
-}
-
-</style>
 </head>
 <body>
-
-<div class="sidebar">
-
-<div class="logo">
-VForum
-</div>
-
+<div class="layout">
+<aside class="sidebar">
+<div class="logo">VForum</div>
 <div class="menu">
-
-<button>🏠 Ana Sayfa</button>
-
-<button>🔥 Popüler</button>
-
-<button>📁 Kategoriler</button>
-
-<button>💬 Mesajlar</button>
-
-<button>🔔 Bildirimler</button>
-
-<button>👤 Profil</button>
-
+<a href="forum.html">🏠 Ana Sayfa</a>
+<a href="new-topic.html">➕ Konu Aç</a>
+<a href="profile.html">👤 Profil</a>
+<a href="messages.html">💬 Mesajlar</a>
+<a href="admin.html">🛡️ Admin</a>
 <button onclick="logout()">🚪 Çıkış Yap</button>
-
 </div>
+</aside>
 
-</div>
-
-<div class="main">
-
+<main class="main">
 <div class="topbar">
-
-<h2>Forum Ana Sayfa</h2>
-
-<div class="userbox" id="userEmail">
-Yükleniyor...
+<h2>Forum Konuları</h2>
+<a class="btn" style="width:auto;padding:11px 18px" href="new-topic.html">Yeni Konu Aç</a>
 </div>
 
+<div class="card">
+<input id="search" placeholder="Konu ara..." oninput="loadTopics()">
 </div>
 
-<button class="create-btn">
-➕ Yeni Konu Aç
-</button>
+<div id="topics"></div>
+</main>
 
-<br><br>
-
-<div class="topic-box">
-
-<div class="topic-title">
-Forum açılış konusu
+<aside class="rightbar">
+<div class="card profile-box">
+<h3>Hesap</h3>
+<p id="userEmail">Yükleniyor...</p>
 </div>
-
-<div>
-VForum başarıyla kuruldu.
+<div class="card">
+<h3>Trendler</h3>
+<p class="meta">🔥 Popüler konular burada görünür.</p>
+<p class="meta">🏆 Rozet sistemi aktif.</p>
+<p class="meta">💬 Mesajlaşma hazır.</p>
 </div>
-
-</div>
-
+</aside>
 </div>
 
 <script>
+let currentUser=null;
 
-async function loadUser(){
-
-const {
-data:{user}
-} = await supabaseClient.auth.getUser();
-
-if(!user){
-window.location.href="login.html";
-return;
+async function checkUser(){
+const {data:{user}}=await supabaseClient.auth.getUser();
+if(!user){location.href="login.html";return;}
+currentUser=user;
+userEmail.innerText=user.email;
+loadTopics();
 }
 
-document.getElementById("userEmail").innerText =
-user.email;
+async function loadTopics(){
+const keyword=document.getElementById("search")?.value?.toLowerCase()||"";
+const {data,error}=await supabaseClient
+.from("topics")
+.select("*")
+.order("created_at",{ascending:false});
 
+if(error){topics.innerHTML="<div class='card'>"+error.message+"</div>";return;}
+
+let list=data||[];
+if(keyword){
+list=list.filter(t=>t.title.toLowerCase().includes(keyword)||t.content.toLowerCase().includes(keyword));
+}
+
+topics.innerHTML=list.map(t=>`
+<div class="card topic" onclick="location.href='topic.html?id=${t.id}'">
+<span class="badge">${t.solved?'Çözüldü':'Konu'}</span>
+${t.pinned?'<span class="badge">Sabit</span>':''}
+<h3>${escapeHtml(t.title)}</h3>
+<p>${escapeHtml(t.content).slice(0,160)}...</p>
+<div class="meta">👍 ${t.likes||0} 👎 ${t.dislikes||0} 👁️ ${t.views||0}</div>
+</div>
+`).join("") || "<div class='card'>Henüz konu yok. İlk konuyu sen aç.</div>";
 }
 
 async function logout(){
-
 await supabaseClient.auth.signOut();
-
-window.location.href="index.html";
-
+location.href="index.html";
 }
 
-loadUser();
+function escapeHtml(text){
+return String(text||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
+}
 
+checkUser();
 </script>
-
 </body>
 </html>

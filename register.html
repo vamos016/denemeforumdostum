@@ -10,7 +10,21 @@
 </head>
 <body class="auth-body">
 
+<div class="auth-shell">
+
+<div class="brand-panel">
+<div class="brand-content">
+<h1><span class="neon">CREATE</span><br>ACCOUNT</h1>
+<div class="terminal">
+&gt; new.user.init<br>
+&gt; profile.create<br>
+&gt; access.pending
+</div>
+</div>
+</div>
+
 <div class="auth-card">
+<img src="logo.png" class="auth-logo">
 <div class="logo" style="text-align:center">ZERONIX</div>
 <div class="logo-sub" style="text-align:center">REGISTER // NEW USER</div>
 
@@ -27,6 +41,8 @@
 <a href="login.html" style="display:block;text-align:center;margin-top:15px;color:#ff6b88">
 Zaten hesabın var mı? Giriş yap
 </a>
+</div>
+
 </div>
 
 <script>
@@ -47,10 +63,7 @@ return;
 
 result.innerText="Hesap oluşturuluyor...";
 
-const {data,error}=await supabaseClient.auth.signUp({
-email,
-password
-});
+const {data,error}=await supabaseClient.auth.signUp({email,password});
 
 if(error){
 result.innerText=error.message;
@@ -67,8 +80,7 @@ bio:"Zeronix üyesi",
 avatar_url:"",
 level:1,
 xp:0,
-badges:["Yeni Üye"],
-created_at:new Date().toISOString()
+badges:["Yeni Üye"]
 });
 }
 

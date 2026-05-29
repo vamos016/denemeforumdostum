@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VForum</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial,sans-serif;
+}
+
+body{
+background:#0f172a;
+color:white;
+display:flex;
+height:100vh;
+}
+
+.sidebar{
+width:260px;
+background:#111827;
+padding:20px;
+border-right:1px solid #1f2937;
+}
+
+.logo{
+font-size:26px;
+font-weight:bold;
+margin-bottom:30px;
+}
+
+.menu button{
+width:100%;
+padding:12px;
+margin-bottom:10px;
+background:#1e293b;
+border:none;
+color:white;
+border-radius:10px;
+cursor:pointer;
+}
+
+.menu button:hover{
+background:#2563eb;
+}
+
+.main{
+flex:1;
+padding:25px;
+overflow:auto;
+}
+
+.topbar{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:25px;
+}
+
+.userbox{
+background:#1e293b;
+padding:10px 15px;
+border-radius:10px;
+}
+
+.topic-box{
+background:#1e293b;
+padding:20px;
+border-radius:15px;
+margin-bottom:15px;
+}
+
+.topic-title{
+font-size:20px;
+font-weight:bold;
+margin-bottom:10px;
+}
+
+.create-btn{
+background:#2563eb;
+border:none;
+padding:12px 20px;
+border-radius:10px;
+color:white;
+cursor:pointer;
+}
+
+.logout{
+background:#dc2626;
+border:none;
+padding:10px 15px;
+border-radius:10px;
+color:white;
+cursor:pointer;
+}
+
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+
+<div class="logo">
+VForum
+</div>
+
+<div class="menu">
+
+<button>🏠 Ana Sayfa</button>
+
+<button>🔥 Popüler</button>
+
+<button>📁 Kategoriler</button>
+
+<button>💬 Mesajlar</button>
+
+<button>🔔 Bildirimler</button>
+
+<button>👤 Profil</button>
+
+<button onclick="logout()">🚪 Çıkış Yap</button>
+
+</div>
+
+</div>
+
+<div class="main">
+
+<div class="topbar">
+
+<h2>Forum Ana Sayfa</h2>
+
+<div class="userbox" id="userEmail">
+Yükleniyor...
+</div>
+
+</div>
+
+<button class="create-btn">
+➕ Yeni Konu Aç
+</button>
+
+<br><br>
+
+<div class="topic-box">
+
+<div class="topic-title">
+Forum açılış konusu
+</div>
+
+<div>
+VForum başarıyla kuruldu.
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+async function loadUser(){
+
+const {
+data:{user}
+} = await supabaseClient.auth.getUser();
+
+if(!user){
+window.location.href="login.html";
+return;
+}
+
+document.getElementById("userEmail").innerText =
+user.email;
+
+}
+
+async function logout(){
+
+await supabaseClient.auth.signOut();
+
+window.location.href="index.html";
+
+}
+
+loadUser();
+
+</script>
+
+</body>
+</html>

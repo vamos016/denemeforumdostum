@@ -3,40 +3,141 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Admin Paneli</title>
+<title>Kontrol Paneli - Zeronix</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 </head>
 <body>
+
 <div class="layout">
+
 <aside class="sidebar">
-<div class="logo">VForum</div>
+<div class="logo">ZERONIX</div>
+<div class="logo-sub">CONTROL // PANEL</div>
+
 <div class="menu">
-<a href="forum.html">🏠 Forum</a>
-<a href="admin.html">🛡️ Admin</a>
+<a href="forum.html">🏠 Ana Panel</a>
+<a href="new-topic.html">➕ Konu Aç</a>
+<a href="profile.html">👤 Profil</a>
+<a href="messages.html">💬 Mesajlar</a>
+<a href="admin.html">🛡️ Kontrol Paneli</a>
+<button onclick="logout()">🚪 Çıkış Yap</button>
 </div>
 </aside>
 
 <main class="main">
-<div class="topbar"><h2>Admin Paneli</h2></div>
 
-<div class="grid">
-<div class="card"><h3>Kullanıcılar</h3><p class="meta">Banlama, yetki verme, profil inceleme.</p></div>
-<div class="card"><h3>Raporlar</h3><p class="meta">Şikayet edilen içerikler.</p></div>
-<div class="card"><h3>Kelime Filtresi</h3><p class="meta">Küfür/spam engelleme.</p></div>
-<div class="card"><h3>Premium</h3><p class="meta">Premium üyelik ve reklam alanları.</p></div>
+<section class="hero">
+<h1><span class="neon">KONTROL</span> PANELİ</h1>
+<p>İstatistikler, raporlar, son konular, moderasyon ve sistem durumu.</p>
+<div class="terminal">&gt; admin.interface.loaded</div>
+</section>
+
+<div class="stats-grid">
+<div class="stat"><b id="topicCount">0</b><span>Konu</span></div>
+<div class="stat"><b id="commentCount">0</b><span>Yorum</span></div>
+<div class="stat"><b id="userCount">0</b><span>Üye</span></div>
+<div class="stat"><b id="reportCount">0</b><span>Rapor</span></div>
 </div>
 
 <div class="card">
-<h3>AI Moderasyon</h3>
-<p class="meta">OpenAI API eklenirse otomatik spam ve özetleme çalışır.</p>
+<h2>Kelime Filtresi</h2>
+<input id="badWords" placeholder="yasak kelimeler: spam, reklam, vb.">
+<button class="btn" onclick="saveFilter()">Filtreyi Kaydet</button>
+<p id="filterResult" class="meta"></p>
 </div>
+
+<div class="card">
+<h2>Son Konular</h2>
+<div id="latestTopics"></div>
+</div>
+
+<div class="card">
+<h2>Raporlar</h2>
+<div id="reportsList"></div>
+</div>
+
 </main>
 
 <aside class="rightbar">
-<div class="card"><h3>Durum</h3><p class="meta">Panel hazır.</p></div>
-</aside>
+<div class="card">
+<h3>⚡ Sistem</h3>
+<p class="meta">Database: Aktif</p>
+<p class="meta">Auth: Aktif</p>
+<p class="meta">Theme: Zeronix Red</p>
+<p class="meta">Realtime: Hazırlanıyor</p>
 </div>
+
+<div class="card">
+<h3>🤖 AI Modül</h3>
+<p class="meta">OpenAI API eklenirse otomatik özetleme ve moderasyon bağlanır.</p>
+</div>
+</aside>
+
+</div>
+
+<script>
+let currentUser=null;
+
+async function init(){
+const {data:{user}}=await supabaseClient.auth.getUser();
+
+if(!user){
+location.href="login.html";
+return;
+}
+
+currentUser=user;
+loadAdmin();
+}
+
+async function loadAdmin(){
+const topics=await supabaseClient.from("topics").select("*").order("created_at",{ascending:false});
+const comments=await supabaseClient.from("comments").select("id");
+const profiles=await supabaseClient.from("profiles").select("id");
+const reports=await supabaseClient.from("reports").select("*").order("created_at",{ascending:false});
+
+topicCount.innerText=topics.data?.length || 0;
+commentCount.innerText=comments.data?.length || 0;
+userCount.innerText=profiles.data?.length || 0;
+reportCount.innerText=reports.data?.length || 0;
+
+latestTopics.innerHTML=(topics.data||[]).slice(0,8).map(t=>`
+<div class="activity">
+<div class="dot"></div>
+<div>
+<b>${escapeHtml(t.title)}</b>
+<p class="meta">👍 ${t.likes||0} • 👁️ ${t.views||0}</p>
+</div>
+</div>
+`).join("") || "<p class='meta'>Konu yok.</p>";
+
+reportsList.innerHTML=(reports.data||[]).map(r=>`
+<div class="card">
+<span class="badge">Rapor</span>
+<p>${escapeHtml(r.reason||"Sebep yok")}</p>
+<div class="meta">${r.target_type} #${r.target_id}</div>
+</div>
+`).join("") || "<p class='meta'>Rapor yok.</p>";
+}
+
+function saveFilter(){
+localStorage.setItem("zeronix_bad_words",badWords.value);
+filterResult.innerText="Filtre kaydedildi.";
+}
+
+async function logout(){
+await supabaseClient.auth.signOut();
+location.href="index.html";
+}
+
+function escapeHtml(text){
+return String(text||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
+}
+
+init();
+</script>
+
 </body>
 </html>

@@ -2,89 +2,30 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Giriş Yap - VForum</title>
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Giriş Yap</title>
+<link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
-
-<style>
-body{
-background:#0f172a;
-color:white;
-font-family:Arial;
-display:flex;
-justify-content:center;
-align-items:center;
-height:100vh;
-margin:0;
-}
-
-.box{
-background:#1e293b;
-padding:30px;
-border-radius:15px;
-width:350px;
-}
-
-input{
-width:100%;
-padding:12px;
-margin-top:10px;
-border:none;
-border-radius:10px;
-box-sizing:border-box;
-}
-
-button{
-width:100%;
-padding:12px;
-margin-top:15px;
-border:none;
-border-radius:10px;
-background:#2563eb;
-color:white;
-cursor:pointer;
-}
-
-#sonuc{
-margin-top:15px;
-}
-</style>
 </head>
-<body>
-
-<div class="box">
+<body class="auth-body">
+<div class="auth-card">
 <h2>Giriş Yap</h2>
-
 <input id="email" type="email" placeholder="E-posta">
 <input id="password" type="password" placeholder="Şifre">
-
-<button onclick="login()">Giriş Yap</button>
-
-<p id="sonuc"></p>
+<button class="btn" onclick="login()">Giriş Yap</button>
+<p id="result"></p>
+<a href="register.html">Hesabın yok mu? Kayıt ol</a>
 </div>
 
 <script>
 async function login(){
-
-const email = document.getElementById("email").value;
-const password = document.getElementById("password").value;
-
-const { data, error } =
-await supabaseClient.auth.signInWithPassword({
-email,
-password
-});
-
-if(error){
-document.getElementById("sonuc").innerText =
-error.message;
-}else{
-window.location.href = "forum.html";
-}
+const email=document.getElementById("email").value.trim();
+const password=document.getElementById("password").value;
+const {error}=await supabaseClient.auth.signInWithPassword({email,password});
+if(error){result.innerText=error.message;return;}
+location.href="forum.html";
 }
 </script>
-
 </body>
 </html>

@@ -3,20 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Kayıt Ol</title>
+<title>Kayıt Ol - Zeronix</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 </head>
 <body class="auth-body">
+
 <div class="auth-card">
+<div class="logo" style="text-align:center">ZERONIX</div>
+<div class="logo-sub" style="text-align:center">REGISTER // NEW USER</div>
+
 <h2>Kayıt Ol</h2>
+
 <input id="username" placeholder="Kullanıcı adı">
 <input id="email" type="email" placeholder="E-posta">
 <input id="password" type="password" placeholder="Şifre">
-<button class="btn" onclick="register()">Kayıt Ol</button>
-<p id="result"></p>
-<a href="login.html">Zaten hesabın var mı? Giriş yap</a>
+
+<button class="btn" onclick="register()">Hesap Oluştur</button>
+
+<p id="result" class="meta"></p>
+
+<a href="login.html" style="display:block;text-align:center;margin-top:15px;color:#ff6b88">
+Zaten hesabın var mı? Giriş yap
+</a>
 </div>
 
 <script>
@@ -25,12 +35,22 @@ const username=document.getElementById("username").value.trim();
 const email=document.getElementById("email").value.trim();
 const password=document.getElementById("password").value;
 
-if(!username||!email||!password){
+if(!username || !email || !password){
 result.innerText="Tüm alanları doldur.";
 return;
 }
 
-const {data,error}=await supabaseClient.auth.signUp({email,password});
+if(password.length<6){
+result.innerText="Şifre en az 6 karakter olmalı.";
+return;
+}
+
+result.innerText="Hesap oluşturuluyor...";
+
+const {data,error}=await supabaseClient.auth.signUp({
+email,
+password
+});
 
 if(error){
 result.innerText=error.message;
@@ -38,14 +58,17 @@ return;
 }
 
 const user=data.user;
+
 if(user){
 await supabaseClient.from("profiles").insert({
 id:user.id,
 username,
-bio:"Yeni VForum üyesi",
+bio:"Zeronix üyesi",
+avatar_url:"",
 level:1,
 xp:0,
-badges:["Yeni Üye"]
+badges:["Yeni Üye"],
+created_at:new Date().toISOString()
 });
 }
 
@@ -53,5 +76,6 @@ result.innerText="Kayıt başarılı. Giriş sayfasına yönlendiriliyorsun...";
 setTimeout(()=>location.href="login.html",1200);
 }
 </script>
+
 </body>
 </html>

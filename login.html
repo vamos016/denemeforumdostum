@@ -3,29 +3,56 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Giriş Yap</title>
+<title>Giriş Yap - Zeronix</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 </head>
 <body class="auth-body">
+
 <div class="auth-card">
+<div class="logo" style="text-align:center">ZERONIX</div>
+<div class="logo-sub" style="text-align:center">LOGIN // AUTH</div>
+
 <h2>Giriş Yap</h2>
+
 <input id="email" type="email" placeholder="E-posta">
 <input id="password" type="password" placeholder="Şifre">
-<button class="btn" onclick="login()">Giriş Yap</button>
-<p id="result"></p>
-<a href="register.html">Hesabın yok mu? Kayıt ol</a>
+
+<button class="btn" onclick="login()">Oturumu Başlat</button>
+
+<p id="result" class="meta"></p>
+
+<a href="register.html" style="display:block;text-align:center;margin-top:15px;color:#ff6b88">
+Hesabın yok mu? Kayıt ol
+</a>
 </div>
 
 <script>
 async function login(){
 const email=document.getElementById("email").value.trim();
 const password=document.getElementById("password").value;
-const {error}=await supabaseClient.auth.signInWithPassword({email,password});
-if(error){result.innerText=error.message;return;}
+
+if(!email || !password){
+result.innerText="E-posta ve şifre zorunlu.";
+return;
+}
+
+result.innerText="Giriş kontrol ediliyor...";
+
+const {error}=await supabaseClient.auth.signInWithPassword({
+email,
+password
+});
+
+if(error){
+result.innerText=error.message;
+return;
+}
+
 location.href="forum.html";
 }
 </script>
+
 </body>
 </html>

@@ -3,43 +3,71 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Konu Detayı</title>
+<title>Konu - Zeronix</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 </head>
 <body>
+
 <div class="layout">
+
 <aside class="sidebar">
-<div class="logo">VForum</div>
+<div class="logo">ZERONIX</div>
+<div class="logo-sub">THREAD VIEW // LIVE</div>
+
 <div class="menu">
-<a href="forum.html">🏠 Ana Sayfa</a>
+<a href="forum.html">🏠 Ana Panel</a>
 <a href="new-topic.html">➕ Konu Aç</a>
 <a href="profile.html">👤 Profil</a>
+<a href="messages.html">💬 Mesajlar</a>
+<a href="admin.html">🛡️ Kontrol Paneli</a>
 <button onclick="logout()">🚪 Çıkış Yap</button>
 </div>
 </aside>
 
 <main class="main">
-<div id="topicBox"></div>
+
+<div id="topicBox">
+<div class="card">Yükleniyor...</div>
+</div>
 
 <div class="card">
-<h3>Yorum Yaz</h3>
-<textarea id="commentText" placeholder="Cevabını yaz..."></textarea>
-<button class="btn" onclick="addComment()">Yorum Gönder</button>
+<h3>💬 Cevap Yaz</h3>
+<textarea id="commentText" placeholder="Yanıtını yaz..."></textarea>
+<div class="actions">
+<button class="btn" onclick="addComment()">Gönder</button>
+<button class="btn" style="background:#1f2937;box-shadow:none" onclick="insertCode()">Kod Bloğu</button>
+</div>
 <p id="result" class="meta"></p>
 </div>
 
+<h2 style="margin:18px 0">Yorumlar</h2>
 <div id="comments"></div>
+
 </main>
 
 <aside class="rightbar">
 <div class="card">
-<h3>Konu Araçları</h3>
-<button class="small-btn" onclick="likeTopic('like')">👍 Beğen</button>
-<button class="small-btn" onclick="likeTopic('dislike')">👎 Beğenme</button>
+<h3>⚡ Konu Araçları</h3>
+<button class="btn" onclick="likeTopic('like')">👍 Beğen</button>
+<button class="btn" onclick="likeTopic('dislike')" style="margin-top:8px;background:#1f2937;box-shadow:none">👎 Beğenme</button>
+<button class="btn" onclick="quoteTopic()" style="margin-top:8px;background:#7f1d1d">💬 Alıntıla</button>
+</div>
+
+<div class="card">
+<h3>🏷️ Tepkiler</h3>
+<div class="quick-tags">
+<span onclick="emoji('🔥')">🔥</span>
+<span onclick="emoji('💀')">💀</span>
+<span onclick="emoji('⚡')">⚡</span>
+<span onclick="emoji('✅')">✅</span>
+<span onclick="emoji('👀')">👀</span>
+</div>
+<p class="meta">Emoji tepkileri yorum alanına eklenir.</p>
 </div>
 </aside>
+
 </div>
 
 <script>
@@ -50,69 +78,154 @@ let currentTopic=null;
 
 async function init(){
 const {data:{user}}=await supabaseClient.auth.getUser();
-if(!user){location.href="login.html";return;}
+if(!user){
+location.href="login.html";
+return;
+}
 currentUser=user;
 await loadTopic();
 await loadComments();
 }
 
 async function loadTopic(){
-const {data,error}=await supabaseClient.from("topics").select("*").eq("id",topicId).single();
-if(error){topicBox.innerHTML="<div class='card'>Konu bulunamadı.</div>";return;}
+const {data,error}=await supabaseClient
+.from("topics")
+.select("*")
+.eq("id",topicId)
+.single();
+
+if(error || !data){
+topicBox.innerHTML="<div class='card'>Konu bulunamadı.</div>";
+return;
+}
+
 currentTopic=data;
 
-await supabaseClient.from("topics").update({views:(data.views||0)+1}).eq("id",topicId);
+await supabaseClient
+.from("topics")
+.update({views:(data.views||0)+1})
+.eq("id",topicId);
 
 topicBox.innerHTML=`
+<section class="hero">
+<span class="badge">${data.solved ? "✅ Çözüldü" : "💬 Aktif Konu"}</span>
+${data.pinned ? '<span class="badge gold">📌 Sabit</span>' : ""}
+<h1 style="margin-top:12px">${escapeHtml(data.title)}</h1>
+<div class="terminal">&gt; thread.id=${data.id} // views=${data.views||0}</div>
+</section>
+
 <div class="card">
-<span class="badge">${data.solved?'Çözüldü':'Konu'}</span>
-${data.pinned?'<span class="badge">Sabit</span>':''}
-<h2>${escapeHtml(data.title)}</h2>
-<p style="white-space:pre-wrap;margin-top:15px">${escapeHtml(data.content)}</p>
+<div class="topic-content">${formatContent(data.content)}</div>
+
+<div class="quick-tags">
+<span>#zeronix</span>
+<span>#discussion</span>
+<span>#forum</span>
+</div>
+
 <div class="actions">
 <button class="small-btn" onclick="likeTopic('like')">👍 ${data.likes||0}</button>
 <button class="small-btn" onclick="likeTopic('dislike')">👎 ${data.dislikes||0}</button>
-<button class="small-btn" onclick="quoteTopic()">💬 Alıntıla</button>
+<button class="small-btn" onclick="quoteTopic()">💬 Alıntı</button>
 </div>
-<div class="meta">👁️ ${data.views||0} görüntülenme</div>
+
+<div class="meta">
+👁️ ${data.views||0} görüntülenme • ${new Date(data.created_at).toLocaleString("tr-TR")}
+</div>
 </div>
 `;
 }
 
 async function loadComments(){
-const {data}=await supabaseClient.from("comments").select("*").eq("topic_id",topicId).order("created_at",{ascending:true});
+const {data,error}=await supabaseClient
+.from("comments")
+.select("*")
+.eq("topic_id",topicId)
+.order("created_at",{ascending:true});
+
+if(error){
+comments.innerHTML="<div class='card'>"+escapeHtml(error.message)+"</div>";
+return;
+}
+
 comments.innerHTML=(data||[]).map(c=>`
 <div class="card comment">
-<p style="white-space:pre-wrap">${escapeHtml(c.content)}</p>
+<p style="white-space:pre-wrap">${formatContent(c.content)}</p>
 <div class="meta">${new Date(c.created_at).toLocaleString("tr-TR")}</div>
 </div>
-`).join("") || "<div class='card'>Henüz yorum yok.</div>";
+`).join("") || "<div class='card empty'>Henüz yorum yok. İlk cevabı sen yaz.</div>";
 }
 
 async function addComment(){
 const content=commentText.value.trim();
-if(!content){result.innerText="Yorum boş olamaz.";return;}
+
+if(!content){
+result.innerText="Yorum boş olamaz.";
+return;
+}
+
 const {error}=await supabaseClient.from("comments").insert({
 topic_id:topicId,
 user_id:currentUser.id,
 content
 });
-if(error){result.innerText=error.message;return;}
+
+if(error){
+result.innerText=error.message;
+return;
+}
+
+await giveXp(8);
+
 commentText.value="";
-result.innerText="Yorum eklendi.";
+result.innerText="Yorum gönderildi.";
 loadComments();
 }
 
 async function likeTopic(type){
 if(!currentTopic)return;
-const field=type==="like"?"likes":"dislikes";
+
+const field=type==="like" ? "likes" : "dislikes";
 const value=(currentTopic[field]||0)+1;
-await supabaseClient.from("topics").update({[field]:value}).eq("id",topicId);
-loadTopic();
+
+await supabaseClient
+.from("topics")
+.update({[field]:value})
+.eq("id",topicId);
+
+await loadTopic();
+}
+
+async function giveXp(amount){
+const {data}=await supabaseClient
+.from("profiles")
+.select("*")
+.eq("id",currentUser.id)
+.single();
+
+if(!data)return;
+
+const newXp=(data.xp||0)+amount;
+const newLevel=Math.max(1,Math.floor(newXp/100)+1);
+
+await supabaseClient
+.from("profiles")
+.update({xp:newXp,level:newLevel})
+.eq("id",currentUser.id);
 }
 
 function quoteTopic(){
 commentText.value=`> ${currentTopic.title}\n\n`;
+commentText.focus();
+}
+
+function insertCode(){
+commentText.value += "\n```js\n// kodunu buraya yaz\n```\n";
+commentText.focus();
+}
+
+function emoji(e){
+commentText.value += " " + e;
 commentText.focus();
 }
 
@@ -125,7 +238,15 @@ function escapeHtml(text){
 return String(text||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
 }
 
+function formatContent(text){
+let safe=escapeHtml(text);
+safe=safe.replace(/```([\s\S]*?)```/g,"<pre style='background:#050505;border:1px solid #3a0b14;color:#ff6b88;padding:14px;border-radius:14px;overflow:auto'><code>$1</code></pre>");
+safe=safe.replace(/\n/g,"<br>");
+return safe;
+}
+
 init();
 </script>
+
 </body>
 </html>

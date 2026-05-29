@@ -3,86 +3,278 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Forum</title>
+<title>Zeronix Forum</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 </head>
 <body>
+
 <div class="layout">
+
 <aside class="sidebar">
-<div class="logo">VForum</div>
+<div class="logo">ZERONIX</div>
+<div class="logo-sub">FORUM // SYSTEM ONLINE</div>
+
 <div class="menu">
-<a href="forum.html">🏠 Ana Sayfa</a>
+<a href="forum.html">🏠 Ana Panel</a>
 <a href="new-topic.html">➕ Konu Aç</a>
 <a href="profile.html">👤 Profil</a>
 <a href="messages.html">💬 Mesajlar</a>
-<a href="admin.html">🛡️ Admin</a>
+<a href="admin.html">🛡️ Kontrol Paneli</a>
 <button onclick="logout()">🚪 Çıkış Yap</button>
+</div>
+
+<div class="card" style="margin-top:18px">
+<div class="online" id="onlineCount">0 kullanıcı aktif</div>
+<p class="meta">Canlı oturum takibi</p>
 </div>
 </aside>
 
 <main class="main">
+
+<section class="hero">
+<h1><span class="neon">ZERONIX</span> FORUM</h1>
+<p>Teknik paylaşımlar, tartışmalar, kaynaklar ve topluluk merkezi.</p>
+<div class="terminal" id="terminalText">
+&gt; bağlantı kuruluyor...
+</div>
+
+<div class="quick-tags">
+<span>#web</span>
+<span>#network</span>
+<span>#linux</span>
+<span>#ctf</span>
+<span>#tools</span>
+<span>#crypto</span>
+</div>
+</section>
+
+<div class="stats-grid">
+<div class="stat"><b id="topicStat">0</b><span>Toplam Konu</span></div>
+<div class="stat"><b id="commentStat">0</b><span>Yorum</span></div>
+<div class="stat"><b id="userStat">1</b><span>Üye</span></div>
+<div class="stat"><b id="activityStat">0</b><span>Aktivite</span></div>
+</div>
+
 <div class="topbar">
-<h2>Forum Konuları</h2>
-<a class="btn" style="width:auto;padding:11px 18px" href="new-topic.html">Yeni Konu Aç</a>
+<h2>Son Açılan Konular</h2>
+<a class="btn" href="new-topic.html">➕ Yeni Konu</a>
 </div>
 
 <div class="card">
-<input id="search" placeholder="Konu ara..." oninput="loadTopics()">
+<div class="search-wrap">
+<input id="search" placeholder="Gelişmiş arama: konu, içerik, etiket..." oninput="loadTopics()">
+<select id="filter" onchange="loadTopics()">
+<option value="new">En yeni</option>
+<option value="popular">Popüler</option>
+<option value="solved">Çözülenler</option>
+<option value="pinned">Sabitlenenler</option>
+</select>
+</div>
 </div>
 
 <div id="topics"></div>
+
 </main>
 
 <aside class="rightbar">
-<div class="card profile-box">
-<h3>Hesap</h3>
-<p id="userEmail">Yükleniyor...</p>
+
+<div class="card profile-mini">
+<img id="avatar" class="avatar" src="https://api.dicebear.com/8.x/shapes/svg?seed=zeronix">
+<h3 id="profileName">Yükleniyor...</h3>
+<p class="meta" id="profileMail"></p>
+
+<div class="levelbar"><div></div></div>
+<p class="meta">Seviye 7 • 680 XP</p>
+
+<div class="quick-tags" style="justify-content:center">
+<span>Yeni Üye</span>
+<span>Aktif</span>
+<span>Scout</span>
 </div>
+</div>
+
 <div class="card">
-<h3>Trendler</h3>
-<p class="meta">🔥 Popüler konular burada görünür.</p>
-<p class="meta">🏆 Rozet sistemi aktif.</p>
-<p class="meta">💬 Mesajlaşma hazır.</p>
+<h3>🔥 Trend Konular</h3>
+<div id="trends">
+<p class="meta">Yükleniyor...</p>
 </div>
+</div>
+
+<div class="card">
+<h3>⚡ Canlı Aktivite</h3>
+<div id="activities">
+<div class="activity"><div class="dot"></div><div><b>Sistem</b><p class="meta">Forum başlatıldı.</p></div></div>
+</div>
+</div>
+
+<div class="card">
+<h3>🏆 Liderlik</h3>
+<p class="meta">1. rootUser • 920 XP</p>
+<p class="meta">2. byteHunter • 750 XP</p>
+<p class="meta">3. zeronixMember • 680 XP</p>
+</div>
+
 </aside>
+
 </div>
 
 <script>
 let currentUser=null;
+let allTopics=[];
+
+const terminalLines=[
+"> ZERONIX çekirdeği başlatıldı",
+"> kullanıcı oturumu doğrulanıyor",
+"> forum verileri yükleniyor",
+"> canlı aktivite izleniyor",
+"> sistem hazır"
+];
+
+let terminalIndex=0;
+function animateTerminal(){
+document.getElementById("terminalText").innerText=terminalLines[terminalIndex];
+terminalIndex=(terminalIndex+1)%terminalLines.length;
+}
+setInterval(animateTerminal,1800);
+animateTerminal();
 
 async function checkUser(){
 const {data:{user}}=await supabaseClient.auth.getUser();
-if(!user){location.href="login.html";return;}
+if(!user){
+location.href="login.html";
+return;
+}
+
 currentUser=user;
-userEmail.innerText=user.email;
-loadTopics();
+profileMail.innerText=user.email;
+profileName.innerText=user.email.split("@")[0];
+onlineCount.innerText=(Math.floor(Math.random()*18)+7)+" kullanıcı aktif";
+
+await ensureProfile();
+await loadStats();
+await loadTopics();
+}
+
+async function ensureProfile(){
+const {data}=await supabaseClient
+.from("profiles")
+.select("*")
+.eq("id",currentUser.id)
+.single();
+
+if(data){
+profileName.innerText=data.username || currentUser.email.split("@")[0];
+if(data.avatar_url) avatar.src=data.avatar_url;
+return;
+}
+
+await supabaseClient.from("profiles").insert({
+id:currentUser.id,
+username:currentUser.email.split("@")[0],
+bio:"Zeronix üyesi",
+level:1,
+xp:0,
+badges:["Yeni Üye"]
+});
+}
+
+async function loadStats(){
+const topicsRes=await supabaseClient.from("topics").select("id");
+const commentsRes=await supabaseClient.from("comments").select("id");
+const profilesRes=await supabaseClient.from("profiles").select("id");
+
+topicStat.innerText=topicsRes.data ? topicsRes.data.length : 0;
+commentStat.innerText=commentsRes.data ? commentsRes.data.length : 0;
+userStat.innerText=profilesRes.data ? profilesRes.data.length : 1;
+activityStat.innerText=(topicsRes.data?.length||0)+(commentsRes.data?.length||0);
 }
 
 async function loadTopics(){
 const keyword=document.getElementById("search")?.value?.toLowerCase()||"";
-const {data,error}=await supabaseClient
-.from("topics")
-.select("*")
-.order("created_at",{ascending:false});
+const filter=document.getElementById("filter")?.value||"new";
 
-if(error){topics.innerHTML="<div class='card'>"+error.message+"</div>";return;}
+let query=supabaseClient.from("topics").select("*");
 
-let list=data||[];
-if(keyword){
-list=list.filter(t=>t.title.toLowerCase().includes(keyword)||t.content.toLowerCase().includes(keyword));
+if(filter==="popular"){
+query=query.order("likes",{ascending:false});
+}else{
+query=query.order("created_at",{ascending:false});
 }
 
+const {data,error}=await query;
+
+if(error){
+topics.innerHTML="<div class='card'>"+escapeHtml(error.message)+"</div>";
+return;
+}
+
+allTopics=data||[];
+let list=[...allTopics];
+
+if(filter==="solved") list=list.filter(t=>t.solved);
+if(filter==="pinned") list=list.filter(t=>t.pinned);
+
+if(keyword){
+list=list.filter(t=>
+String(t.title||"").toLowerCase().includes(keyword) ||
+String(t.content||"").toLowerCase().includes(keyword)
+);
+}
+
+renderTopics(list);
+renderTrends(allTopics);
+renderActivities(allTopics);
+}
+
+function renderTopics(list){
 topics.innerHTML=list.map(t=>`
 <div class="card topic" onclick="location.href='topic.html?id=${t.id}'">
-<span class="badge">${t.solved?'Çözüldü':'Konu'}</span>
-${t.pinned?'<span class="badge">Sabit</span>':''}
-<h3>${escapeHtml(t.title)}</h3>
-<p>${escapeHtml(t.content).slice(0,160)}...</p>
-<div class="meta">👍 ${t.likes||0} 👎 ${t.dislikes||0} 👁️ ${t.views||0}</div>
+<div>
+<span class="badge">${t.solved ? "✅ Çözüldü" : "💬 Konu"}</span>
+${t.pinned ? '<span class="badge gold">📌 Sabit</span>' : ""}
+${(t.likes||0)>5 ? '<span class="badge green">🔥 Popüler</span>' : ""}
 </div>
-`).join("") || "<div class='card'>Henüz konu yok. İlk konuyu sen aç.</div>";
+
+<h3>${escapeHtml(t.title)}</h3>
+<p>${escapeHtml(t.content).slice(0,190)}${t.content.length>190 ? "..." : ""}</p>
+
+<div class="quick-tags">
+<span>#discussion</span>
+<span>#zeronix</span>
+<span>#forum</span>
+</div>
+
+<div class="meta">
+👍 ${t.likes||0} • 👎 ${t.dislikes||0} • 👁️ ${t.views||0} • ${new Date(t.created_at).toLocaleString("tr-TR")}
+</div>
+</div>
+`).join("") || "<div class='card empty'>Henüz konu yok. İlk konuyu sen aç.</div>";
+}
+
+function renderTrends(list){
+const sorted=[...list].sort((a,b)=>(b.likes||0)-(a.likes||0)).slice(0,5);
+trends.innerHTML=sorted.map(t=>`
+<p class="meta">🔥 ${escapeHtml(t.title).slice(0,38)}</p>
+`).join("") || "<p class='meta'>Trend konu yok.</p>";
+}
+
+function renderActivities(list){
+const latest=[...list].slice(0,5);
+activities.innerHTML=latest.map(t=>`
+<div class="activity">
+<div class="dot"></div>
+<div>
+<b>Yeni konu</b>
+<p class="meta">${escapeHtml(t.title).slice(0,42)}</p>
+</div>
+</div>
+`).join("") || `
+<div class="activity">
+<div class="dot"></div>
+<div><b>Sistem</b><p class="meta">Henüz aktivite yok.</p></div>
+</div>`;
 }
 
 async function logout(){
@@ -96,5 +288,6 @@ return String(text||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;
 
 checkUser();
 </script>
+
 </body>
 </html>

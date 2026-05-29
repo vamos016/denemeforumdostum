@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Konu Detayı</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+<div class="logo">VForum</div>
+<div class="menu">
+<a href="forum.html">🏠 Ana Sayfa</a>
+<a href="new-topic.html">➕ Konu Aç</a>
+<a href="profile.html">👤 Profil</a>
+<button onclick="logout()">🚪 Çıkış Yap</button>
+</div>
+</aside>
+
+<main class="main">
+<div id="topicBox"></div>
+
+<div class="card">
+<h3>Yorum Yaz</h3>
+<textarea id="commentText" placeholder="Cevabını yaz..."></textarea>
+<button class="btn" onclick="addComment()">Yorum Gönder</button>
+<p id="result" class="meta"></p>
+</div>
+
+<div id="comments"></div>
+</main>
+
+<aside class="rightbar">
+<div class="card">
+<h3>Konu Araçları</h3>
+<button class="small-btn" onclick="likeTopic('like')">👍 Beğen</button>
+<button class="small-btn" onclick="likeTopic('dislike')">👎 Beğenme</button>
+</div>
+</aside>
+</div>
+
+<script>
+const params=new URLSearchParams(location.search);
+const topicId=params.get("id");
+let currentUser=null;
+let currentTopic=null;
+
+async function init(){
+const {data:{user}}=await supabaseClient.auth.getUser();
+if(!user){location.href="login.html";return;}
+currentUser=user;
+await loadTopic();
+await loadComments();
+}
+
+async function loadTopic(){
+const {data,error}=await supabaseClient.from("topics").select("*").eq("id",topicId).single();
+if(error){topicBox.innerHTML="<div class='card'>Konu bulunamadı.</div>";return;}
+currentTopic=data;
+
+await supabaseClient.from("topics").update({views:(data.views||0)+1}).eq("id",topicId);
+
+topicBox.innerHTML=`
+<div class="card">
+<span class="badge">${data.solved?'Çözüldü':'Konu'}</span>
+${data.pinned?'<span class="badge">Sabit</span>':''}
+<h2>${escapeHtml(data.title)}</h2>
+<p style="white-space:pre-wrap;margin-top:15px">${escapeHtml(data.content)}</p>
+<div class="actions">
+<button class="small-btn" onclick="likeTopic('like')">👍 ${data.likes||0}</button>
+<button class="small-btn" onclick="likeTopic('dislike')">👎 ${data.dislikes||0}</button>
+<button class="small-btn" onclick="quoteTopic()">💬 Alıntıla</button>
+</div>
+<div class="meta">👁️ ${data.views||0} görüntülenme</div>
+</div>
+`;
+}
+
+async function loadComments(){
+const {data}=await supabaseClient.from("comments").select("*").eq("topic_id",topicId).order("created_at",{ascending:true});
+comments.innerHTML=(data||[]).map(c=>`
+<div class="card comment">
+<p style="white-space:pre-wrap">${escapeHtml(c.content)}</p>
+<div class="meta">${new Date(c.created_at).toLocaleString("tr-TR")}</div>
+</div>
+`).join("") || "<div class='card'>Henüz yorum yok.</div>";
+}
+
+async function addComment(){
+const content=commentText.value.trim();
+if(!content){result.innerText="Yorum boş olamaz.";return;}
+const {error}=await supabaseClient.from("comments").insert({
+topic_id:topicId,
+user_id:currentUser.id,
+content
+});
+if(error){result.innerText=error.message;return;}
+commentText.value="";
+result.innerText="Yorum eklendi.";
+loadComments();
+}
+
+async function likeTopic(type){
+if(!currentTopic)return;
+const field=type==="like"?"likes":"dislikes";
+const value=(currentTopic[field]||0)+1;
+await supabaseClient.from("topics").update({[field]:value}).eq("id",topicId);
+loadTopic();
+}
+
+function quoteTopic(){
+commentText.value=`> ${currentTopic.title}\n\n`;
+commentText.focus();
+}
+
+async function logout(){
+await supabaseClient.auth.signOut();
+location.href="index.html";
+}
+
+function escapeHtml(text){
+return String(text||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
+}
+
+init();
+</script>
+</body>
+</html>

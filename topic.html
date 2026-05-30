@@ -10,27 +10,39 @@
 </head>
 <body>
 
+<div id="locked" style="display:none">
+<div class="auth-body">
+<div class="auth-card">
+<img src="logo.png" class="auth-logo">
+<div class="logo" style="text-align:center">ZERONIX</div>
+<div class="logo-sub" style="text-align:center">PRIVATE THREAD</div>
+<h2>Bu konu üyelere özel</h2>
+<p>Konu başlığını görebilirsin fakat içeriği okumak için giriş yapmalısın.</p>
+<a class="btn" href="login.html">Giriş Yap</a>
+<a class="btn" href="register.html" style="background:#1f2937;box-shadow:none">Kayıt Ol</a>
+<a href="index.html" style="display:block;text-align:center;margin-top:15px;color:#ff6b88">Ana sayfaya dön</a>
+</div>
+</div>
+</div>
+
+<div id="memberArea" style="display:none">
 <div class="layout">
 
 <aside class="sidebar">
 <div class="logo">ZERONIX</div>
-<div class="logo-sub">THREAD VIEW // LIVE</div>
+<div class="logo-sub">THREAD // MEMBER</div>
 
 <div class="menu">
-<a href="forum.html">🏠 Ana Panel</a>
+<a href="index.html">🌐 Genel Ana Sayfa</a>
+<a href="forum.html">🏠 Üye Paneli</a>
 <a href="new-topic.html">➕ Konu Aç</a>
 <a href="profile.html">👤 Profil</a>
-<a href="messages.html">💬 Mesajlar</a>
-<a href="admin.html">🛡️ Kontrol Paneli</a>
 <button onclick="logout()">🚪 Çıkış Yap</button>
 </div>
 </aside>
 
 <main class="main">
-
-<div id="topicBox">
-<div class="card">Yükleniyor...</div>
-</div>
+<div id="topicBox"><div class="card">Yükleniyor...</div></div>
 
 <div class="card">
 <h3>💬 Cevap Yaz</h3>
@@ -44,7 +56,6 @@
 
 <h2 style="margin:18px 0">Yorumlar</h2>
 <div id="comments"></div>
-
 </main>
 
 <aside class="rightbar">
@@ -54,20 +65,9 @@
 <button class="btn" onclick="likeTopic('dislike')" style="margin-top:8px;background:#1f2937;box-shadow:none">👎 Beğenme</button>
 <button class="btn" onclick="quoteTopic()" style="margin-top:8px;background:#7f1d1d">💬 Alıntıla</button>
 </div>
-
-<div class="card">
-<h3>🏷️ Tepkiler</h3>
-<div class="quick-tags">
-<span onclick="emoji('🔥')">🔥</span>
-<span onclick="emoji('💀')">💀</span>
-<span onclick="emoji('⚡')">⚡</span>
-<span onclick="emoji('✅')">✅</span>
-<span onclick="emoji('👀')">👀</span>
-</div>
-<p class="meta">Emoji tepkileri yorum alanına eklenir.</p>
-</div>
 </aside>
 
+</div>
 </div>
 
 <script>
@@ -78,11 +78,15 @@ let currentTopic=null;
 
 async function init(){
 const {data:{user}}=await supabaseClient.auth.getUser();
+
 if(!user){
-location.href="login.html";
+document.getElementById("locked").style.display="block";
 return;
 }
+
 currentUser=user;
+document.getElementById("memberArea").style.display="block";
+
 await loadTopic();
 await loadComments();
 }
@@ -111,27 +115,12 @@ topicBox.innerHTML=`
 <span class="badge">${data.solved ? "✅ Çözüldü" : "💬 Aktif Konu"}</span>
 ${data.pinned ? '<span class="badge gold">📌 Sabit</span>' : ""}
 <h1 style="margin-top:12px">${escapeHtml(data.title)}</h1>
-<div class="terminal">&gt; thread.id=${data.id} // views=${data.views||0}</div>
+<div class="terminal">&gt; thread.id=${data.id}</div>
 </section>
 
 <div class="card">
 <div class="topic-content">${formatContent(data.content)}</div>
-
-<div class="quick-tags">
-<span>#zeronix</span>
-<span>#discussion</span>
-<span>#forum</span>
-</div>
-
-<div class="actions">
-<button class="small-btn" onclick="likeTopic('like')">👍 ${data.likes||0}</button>
-<button class="small-btn" onclick="likeTopic('dislike')">👎 ${data.dislikes||0}</button>
-<button class="small-btn" onclick="quoteTopic()">💬 Alıntı</button>
-</div>
-
-<div class="meta">
-👁️ ${data.views||0} görüntülenme • ${new Date(data.created_at).toLocaleString("tr-TR")}
-</div>
+<div class="meta">👁️ ${data.views||0} görüntülenme • ${new Date(data.created_at).toLocaleString("tr-TR")}</div>
 </div>
 `;
 }
@@ -153,16 +142,12 @@ comments.innerHTML=(data||[]).map(c=>`
 <p style="white-space:pre-wrap">${formatContent(c.content)}</p>
 <div class="meta">${new Date(c.created_at).toLocaleString("tr-TR")}</div>
 </div>
-`).join("") || "<div class='card empty'>Henüz yorum yok. İlk cevabı sen yaz.</div>";
+`).join("") || "<div class='card empty'>Henüz yorum yok.</div>";
 }
 
 async function addComment(){
 const content=commentText.value.trim();
-
-if(!content){
-result.innerText="Yorum boş olamaz.";
-return;
-}
+if(!content){result.innerText="Yorum boş olamaz.";return;}
 
 const {error}=await supabaseClient.from("comments").insert({
 topic_id:topicId,
@@ -170,12 +155,7 @@ user_id:currentUser.id,
 content
 });
 
-if(error){
-result.innerText=error.message;
-return;
-}
-
-await giveXp(8);
+if(error){result.innerText=error.message;return;}
 
 commentText.value="";
 result.innerText="Yorum gönderildi.";
@@ -184,7 +164,6 @@ loadComments();
 
 async function likeTopic(type){
 if(!currentTopic)return;
-
 const field=type==="like" ? "likes" : "dislikes";
 const value=(currentTopic[field]||0)+1;
 
@@ -193,25 +172,7 @@ await supabaseClient
 .update({[field]:value})
 .eq("id",topicId);
 
-await loadTopic();
-}
-
-async function giveXp(amount){
-const {data}=await supabaseClient
-.from("profiles")
-.select("*")
-.eq("id",currentUser.id)
-.single();
-
-if(!data)return;
-
-const newXp=(data.xp||0)+amount;
-const newLevel=Math.max(1,Math.floor(newXp/100)+1);
-
-await supabaseClient
-.from("profiles")
-.update({xp:newXp,level:newLevel})
-.eq("id",currentUser.id);
+loadTopic();
 }
 
 function quoteTopic(){
@@ -221,11 +182,6 @@ commentText.focus();
 
 function insertCode(){
 commentText.value += "\n```js\n// kodunu buraya yaz\n```\n";
-commentText.focus();
-}
-
-function emoji(e){
-commentText.value += " " + e;
 commentText.focus();
 }
 
@@ -240,7 +196,7 @@ return String(text||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;
 
 function formatContent(text){
 let safe=escapeHtml(text);
-safe=safe.replace(/```([\s\S]*?)```/g,"<pre style='background:#050505;border:1px solid #3a0b14;color:#ff6b88;padding:14px;border-radius:14px;overflow:auto'><code>$1</code></pre>");
+safe=safe.replace(/```([\s\S]*?)```/g,"<pre><code>$1</code></pre>");
 safe=safe.replace(/\n/g,"<br>");
 return safe;
 }

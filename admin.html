@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Kontrol Paneli - Zeronix</title>
+<title>Admin Paneli - Zeronix</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
@@ -31,12 +31,14 @@
 <div class="logo-sub">ADMIN // CONTROL</div>
 
 <div class="menu">
-<a href="index.html">🌐 Genel Ana Sayfa</a>
+<a href="index.html">🌐 Ana Sayfa</a>
 <a href="forum.html">🏠 Üye Paneli</a>
 <a href="new-topic.html">➕ Konu Aç</a>
+<a href="favorites.html">⭐ Favoriler</a>
+<a href="leaderboard.html">🏆 Liderlik</a>
 <a href="profile.html">👤 Profil</a>
 <a href="messages.html">💬 Mesajlar</a>
-<a href="admin.html">🛡️ Kontrol Paneli</a>
+<a href="admin.html">🛡️ Admin Paneli</a>
 <button onclick="logout()">🚪 Çıkış Yap</button>
 </div>
 </aside>
@@ -45,7 +47,7 @@
 
 <section class="hero">
 <h1><span class="neon">ADMIN</span> PANEL</h1>
-<p>Sadece vamos ve furkan yetkili hesapları bu alanı kullanabilir.</p>
+<p>Konu yönetimi, kullanıcı kontrolü, raporlar ve forum istatistikleri.</p>
 <div class="terminal">&gt; admin.access.granted</div>
 </section>
 
@@ -58,10 +60,23 @@
 
 <div class="card">
 <h2>Yasaklı Kelime Filtresi</h2>
-<p class="meta">Bu ayar sadece bu tarayıcıda saklanır. Global filtre için sonraki aşamada Supabase tablosu bağlanır.</p>
+<p class="meta">Bu ayar şu an localStorage’da tutulur. Global veritabanı filtresi sonraki aşamada bağlanır.</p>
 <input id="badWords" placeholder="Örnek: spam, reklam, küfür">
 <button class="btn" onclick="saveFilter()">Filtreyi Kaydet</button>
 <p id="filterResult" class="meta"></p>
+</div>
+
+<div class="card">
+<h2>Kullanıcı Yetkileri</h2>
+<p class="meta">Kullanıcı adını yazıp rol verebilirsin: user, mod, admin.</p>
+<input id="roleUsername" placeholder="Kullanıcı adı">
+<select id="roleValue">
+<option value="user">user</option>
+<option value="mod">mod</option>
+<option value="admin">admin</option>
+</select>
+<button class="btn" onclick="updateRole()">Rolü Güncelle</button>
+<p id="roleResult" class="meta"></p>
 </div>
 
 <div class="card">
@@ -83,6 +98,12 @@
 <p class="meta">Auth: Aktif</p>
 <p class="meta">Admin kontrolü: Aktif</p>
 <p class="meta">Yetkili: <span id="adminName">...</span></p>
+</div>
+
+<div class="card">
+<h3>👑 Yetkililer</h3>
+<p class="meta">vamos • Kurucu</p>
+<p class="meta">furkan • Yönetici</p>
 </div>
 </aside>
 
@@ -132,12 +153,12 @@ commentCount.innerText=comments.data?.length || 0;
 userCount.innerText=profiles.data?.length || 0;
 reportCount.innerText=reports.data?.length || 0;
 
-latestTopics.innerHTML=(topics.data||[]).slice(0,10).map(t=>`
+latestTopics.innerHTML=(topics.data||[]).slice(0,12).map(t=>`
 <div class="activity">
 <div class="dot"></div>
 <div style="width:100%">
 <b>${escapeHtml(t.title)}</b>
-<p class="meta">👍 ${t.likes||0} • 👁️ ${t.views||0}</p>
+<p class="meta">👍 ${t.likes||0} • 👁️ ${t.views||0} • ${new Date(t.created_at).toLocaleString("tr-TR")}</p>
 <div class="actions">
 <button class="small-btn" onclick="deleteTopic(${t.id})">Sil</button>
 <button class="small-btn" onclick="togglePinned(${t.id}, ${t.pinned ? 'false' : 'true'})">
@@ -153,10 +174,13 @@ ${t.solved ? 'Çözümü Kaldır' : 'Çözüldü Yap'}
 
 usersList.innerHTML=(profiles.data||[]).map(u=>`
 <div class="activity">
-<div class="dot"></div>
+<img class="avatar" style="width:48px;height:48px" src="${u.avatar_url || 'logo.png'}">
 <div>
 <b>${escapeHtml(u.username || "Kullanıcı")}</b>
-<p class="meta">Rol: ${escapeHtml(u.role || "user")} • Seviye: ${u.level || 1} • XP: ${u.xp || 0}</p>
+<p class="meta">Rol: ${escapeHtml(u.role || "user")} • ${escapeHtml(u.title || "Üye")} • Seviye ${u.level || 1} • XP ${u.xp || 0}</p>
+<div class="quick-tags">
+${(u.badges||["Yeni Üye"]).map(b=>`<span>${escapeHtml(b)}</span>`).join("")}
+</div>
 </div>
 </div>
 `).join("") || "<p class='meta'>Kullanıcı yok.</p>";
@@ -167,10 +191,36 @@ localStorage.setItem("zeronix_bad_words",badWords.value);
 filterResult.innerText="Filtre kaydedildi.";
 }
 
+async function updateRole(){
+const username=roleUsername.value.trim();
+const role=roleValue.value;
+
+if(!username){
+roleResult.innerText="Kullanıcı adı yaz.";
+return;
+}
+
+const {error}=await supabaseClient
+.from("profiles")
+.update({role})
+.eq("username",username);
+
+if(error){
+roleResult.innerText=error.message;
+return;
+}
+
+roleResult.innerText=username+" kullanıcısının rolü "+role+" yapıldı.";
+loadAdmin();
+}
+
 async function deleteTopic(id){
 if(!confirm("Bu konuyu silmek istiyor musun?")) return;
+
 await supabaseClient.from("comments").delete().eq("topic_id",id);
+await supabaseClient.from("favorites").delete().eq("topic_id",id);
 await supabaseClient.from("topics").delete().eq("id",id);
+
 loadAdmin();
 }
 

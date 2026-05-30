@@ -33,38 +33,75 @@
 <div class="logo-sub">THREAD // MEMBER</div>
 
 <div class="menu">
-<a href="index.html">🌐 Genel Ana Sayfa</a>
+<a href="index.html">🌐 Ana Sayfa</a>
 <a href="forum.html">🏠 Üye Paneli</a>
 <a href="new-topic.html">➕ Konu Aç</a>
+<a href="favorites.html">⭐ Favoriler</a>
+<a href="leaderboard.html">🏆 Liderlik</a>
 <a href="profile.html">👤 Profil</a>
+<a href="messages.html">💬 Mesajlar</a>
+<a href="admin.html">🛡️ Admin Paneli</a>
 <button onclick="logout()">🚪 Çıkış Yap</button>
 </div>
 </aside>
 
 <main class="main">
-<div id="topicBox"><div class="card">Yükleniyor...</div></div>
+
+<div id="topicBox">
+<div class="card">Yükleniyor...</div>
+</div>
 
 <div class="card">
 <h3>💬 Cevap Yaz</h3>
 <textarea id="commentText" placeholder="Yanıtını yaz..."></textarea>
+
 <div class="actions">
 <button class="btn" onclick="addComment()">Gönder</button>
 <button class="btn" style="background:#1f2937;box-shadow:none" onclick="insertCode()">Kod Bloğu</button>
+<button class="btn" style="background:#7f1d1d" onclick="quoteTopic()">Alıntıla</button>
 </div>
+
 <p id="result" class="meta"></p>
 </div>
 
 <h2 style="margin:18px 0">Yorumlar</h2>
 <div id="comments"></div>
+
 </main>
 
 <aside class="rightbar">
+
+<div class="card profile-mini">
+<img id="ownerAvatar" class="avatar" src="logo.png">
+<h3 id="ownerName">Konu Sahibi</h3>
+<p class="meta" id="ownerTitle">Üye</p>
+<div class="levelbar"><div id="ownerXpBar"></div></div>
+<p class="meta" id="ownerStats">Seviye 1 • 0 XP</p>
+<div class="quick-tags" id="ownerBadges">
+<span>Üye</span>
+</div>
+</div>
+
 <div class="card">
 <h3>⚡ Konu Araçları</h3>
 <button class="btn" onclick="likeTopic('like')">👍 Beğen</button>
 <button class="btn" onclick="likeTopic('dislike')" style="margin-top:8px;background:#1f2937;box-shadow:none">👎 Beğenme</button>
-<button class="btn" onclick="quoteTopic()" style="margin-top:8px;background:#7f1d1d">💬 Alıntıla</button>
+<button class="btn" onclick="addFavorite()" style="margin-top:8px;background:#7f1d1d">⭐ Favorilere Ekle</button>
+<button class="btn" onclick="giveReputation()" style="margin-top:8px;background:#111827;box-shadow:none">🏆 İtibar Ver</button>
 </div>
+
+<div class="card">
+<h3>🏷️ Tepkiler</h3>
+<div class="quick-tags">
+<span onclick="emoji('🔥')">🔥</span>
+<span onclick="emoji('💀')">💀</span>
+<span onclick="emoji('⚡')">⚡</span>
+<span onclick="emoji('✅')">✅</span>
+<span onclick="emoji('👀')">👀</span>
+</div>
+<p class="meta">Emojiye basınca yorum kutusuna eklenir.</p>
+</div>
+
 </aside>
 
 </div>
@@ -73,8 +110,10 @@
 <script>
 const params=new URLSearchParams(location.search);
 const topicId=params.get("id");
+
 let currentUser=null;
 let currentTopic=null;
+let ownerProfile=null;
 
 async function init(){
 const {data:{user}}=await supabaseClient.auth.getUser();
@@ -87,8 +126,16 @@ return;
 currentUser=user;
 document.getElementById("memberArea").style.display="block";
 
+await updateLastSeen();
 await loadTopic();
 await loadComments();
+}
+
+async function updateLastSeen(){
+await supabaseClient
+.from("profiles")
+.update({last_seen:new Date().toISOString()})
+.eq("id",currentUser.id);
 }
 
 async function loadTopic(){
@@ -110,19 +157,55 @@ await supabaseClient
 .update({views:(data.views||0)+1})
 .eq("id",topicId);
 
+await loadOwner(data.user_id);
+
 topicBox.innerHTML=`
 <section class="hero">
 <span class="badge">${data.solved ? "✅ Çözüldü" : "💬 Aktif Konu"}</span>
 ${data.pinned ? '<span class="badge gold">📌 Sabit</span>' : ""}
 <h1 style="margin-top:12px">${escapeHtml(data.title)}</h1>
-<div class="terminal">&gt; thread.id=${data.id}</div>
+<div class="terminal">&gt; thread.id=${data.id} // secure.view</div>
 </section>
 
 <div class="card">
 <div class="topic-content">${formatContent(data.content)}</div>
-<div class="meta">👁️ ${data.views||0} görüntülenme • ${new Date(data.created_at).toLocaleString("tr-TR")}</div>
+
+<div class="quick-tags">
+${(data.tags||["zeronix","forum"]).map(t=>`<span>#${escapeHtml(t)}</span>`).join("")}
+</div>
+
+<div class="actions">
+<button class="small-btn" onclick="likeTopic('like')">👍 ${data.likes||0}</button>
+<button class="small-btn" onclick="likeTopic('dislike')">👎 ${data.dislikes||0}</button>
+<button class="small-btn" onclick="addFavorite()">⭐ Favori</button>
+<button class="small-btn" onclick="quoteTopic()">💬 Alıntı</button>
+</div>
+
+<div class="meta">
+👁️ ${data.views||0} görüntülenme • ${new Date(data.created_at).toLocaleString("tr-TR")}
+</div>
 </div>
 `;
+}
+
+async function loadOwner(userId){
+const {data}=await supabaseClient
+.from("profiles")
+.select("*")
+.eq("id",userId)
+.single();
+
+if(!data)return;
+
+ownerProfile=data;
+ownerAvatar.src=data.avatar_url || "logo.png";
+ownerName.innerText=data.username || "Üye";
+ownerTitle.innerText=data.title || "Üye";
+ownerStats.innerText=`Seviye ${data.level||1} • ${data.xp||0} XP • ${data.reputation||0} itibar`;
+ownerXpBar.style.width=((data.xp||0)%100)+"%";
+
+const badges=data.badges || ["Üye"];
+ownerBadges.innerHTML=badges.map(b=>`<span>${escapeHtml(b)}</span>`).join("");
 }
 
 async function loadComments(){
@@ -147,7 +230,11 @@ comments.innerHTML=(data||[]).map(c=>`
 
 async function addComment(){
 const content=commentText.value.trim();
-if(!content){result.innerText="Yorum boş olamaz.";return;}
+
+if(!content){
+result.innerText="Yorum boş olamaz.";
+return;
+}
 
 const {error}=await supabaseClient.from("comments").insert({
 topic_id:topicId,
@@ -155,7 +242,12 @@ user_id:currentUser.id,
 content
 });
 
-if(error){result.innerText=error.message;return;}
+if(error){
+result.innerText=error.message;
+return;
+}
+
+await giveXp(8);
 
 commentText.value="";
 result.innerText="Yorum gönderildi.";
@@ -164,6 +256,7 @@ loadComments();
 
 async function likeTopic(type){
 if(!currentTopic)return;
+
 const field=type==="like" ? "likes" : "dislikes";
 const value=(currentTopic[field]||0)+1;
 
@@ -172,16 +265,87 @@ await supabaseClient
 .update({[field]:value})
 .eq("id",topicId);
 
-loadTopic();
+await loadTopic();
+}
+
+async function addFavorite(){
+const {error}=await supabaseClient.from("favorites").insert({
+user_id:currentUser.id,
+topic_id:topicId
+});
+
+if(error){
+alert("Bu konu zaten favorilerde olabilir.");
+return;
+}
+
+alert("Favorilere eklendi.");
+}
+
+async function giveReputation(){
+if(!ownerProfile){
+alert("Konu sahibi bulunamadı.");
+return;
+}
+
+if(ownerProfile.id===currentUser.id){
+alert("Kendine itibar veremezsin.");
+return;
+}
+
+const newRep=(ownerProfile.reputation||0)+1;
+
+await supabaseClient
+.from("profiles")
+.update({reputation:newRep})
+.eq("id",ownerProfile.id);
+
+await supabaseClient.from("reputation_logs").insert({
+giver_id:currentUser.id,
+receiver_id:ownerProfile.id,
+amount:1,
+reason:"Konu için itibar"
+});
+
+alert("+1 itibar verildi.");
+loadOwner(ownerProfile.id);
+}
+
+async function giveXp(amount){
+const {data}=await supabaseClient
+.from("profiles")
+.select("*")
+.eq("id",currentUser.id)
+.single();
+
+if(!data)return;
+
+const newXp=(data.xp||0)+amount;
+const newLevel=Math.max(1,Math.floor(newXp/100)+1);
+
+await supabaseClient
+.from("profiles")
+.update({
+xp:newXp,
+level:newLevel,
+last_seen:new Date().toISOString()
+})
+.eq("id",currentUser.id);
 }
 
 function quoteTopic(){
+if(!currentTopic)return;
 commentText.value=`> ${currentTopic.title}\n\n`;
 commentText.focus();
 }
 
 function insertCode(){
 commentText.value += "\n```js\n// kodunu buraya yaz\n```\n";
+commentText.focus();
+}
+
+function emoji(e){
+commentText.value += " " + e;
 commentText.focus();
 }
 

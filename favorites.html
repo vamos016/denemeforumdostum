@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Favoriler - Zeronix</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+</head>
+<body>
+
+<div class="layout">
+
+<aside class="sidebar">
+<div class="logo">ZERONIX</div>
+<div class="logo-sub">FAVORITES // PANEL</div>
+
+<div class="menu">
+<a href="index.html">🌐 Ana Sayfa</a>
+<a href="forum.html">🏠 Üye Paneli</a>
+<a href="new-topic.html">➕ Konu Aç</a>
+<a href="favorites.html">⭐ Favoriler</a>
+<a href="leaderboard.html">🏆 Liderlik</a>
+<a href="profile.html">👤 Profil</a>
+<button onclick="logout()">🚪 Çıkış Yap</button>
+</div>
+</aside>
+
+<main class="main">
+
+<section class="hero">
+<h1><span class="neon">FAVORİ</span> KONULAR</h1>
+<p>Kaydettiğin konular burada görünür.</p>
+<div class="terminal">&gt; favorites.loaded</div>
+</section>
+
+<div id="favoritesList"></div>
+
+</main>
+
+<aside class="rightbar">
+<div class="card">
+<h3>⭐ Favori Sistemi</h3>
+<p class="meta">Forumda konuların altındaki Favori butonuyla konu kaydedebilirsin.</p>
+</div>
+</aside>
+
+</div>
+
+<script>
+let currentUser=null;
+
+async function init(){
+const {data:{user}}=await supabaseClient.auth.getUser();
+if(!user){location.href="login.html";return;}
+currentUser=user;
+loadFavorites();
+}
+
+async function loadFavorites(){
+const favs=await supabaseClient
+.from("favorites")
+.select("*")
+.eq("user_id",currentUser.id)
+.order("created_at",{ascending:false});
+
+if(!favs.data || favs.data.length===0){
+favoritesList.innerHTML="<div class='card empty'>Henüz favori konu yok.</div>";
+return;
+}
+
+const ids=favs.data.map(f=>f.topic_id);
+
+const topics=await supabaseClient
+.from("topics")
+.select("*")
+.in("id",ids);
+
+favoritesList.innerHTML=(topics.data||[]).map(t=>`
+<div class="card topic">
+<h3>${escapeHtml(t.title)}</h3>
+<p>${escapeHtml(t.content).slice(0,180)}...</p>
+<div class="meta">👍 ${t.likes||0} • 👁️ ${t.views||0}</div>
+<div class="actions">
+<button class="small-btn" onclick="location.href='topic.html?id=${t.id}'">Oku</button>
+<button class="small-btn" onclick="removeFavorite(${t.id})">Favoriden Çıkar</button>
+</div>
+</div>
+`).join("");
+}
+
+async function removeFavorite(topicId){
+await supabaseClient
+.from("favorites")
+.delete()
+.eq("user_id",currentUser.id)
+.eq("topic_id",topicId);
+
+loadFavorites();
+}
+
+async function logout(){
+await supabaseClient.auth.signOut();
+location.href="index.html";
+}
+
+function escapeHtml(text){
+return String(text||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
+}
+
+init();
+</script>
+
+</body>
+</html>

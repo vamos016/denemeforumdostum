@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Liderlik - Zeronix</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+</head>
+<body>
+
+<div class="layout">
+
+<aside class="sidebar">
+<div class="logo">ZERONIX</div>
+<div class="logo-sub">LEADERBOARD // RANK</div>
+
+<div class="menu">
+<a href="index.html">🌐 Ana Sayfa</a>
+<a href="forum.html">🏠 Üye Paneli</a>
+<a href="new-topic.html">➕ Konu Aç</a>
+<a href="favorites.html">⭐ Favoriler</a>
+<a href="leaderboard.html">🏆 Liderlik</a>
+<a href="profile.html">👤 Profil</a>
+<button onclick="logout()">🚪 Çıkış Yap</button>
+</div>
+</aside>
+
+<main class="main">
+
+<section class="hero">
+<h1><span class="neon">LİDERLİK</span> TABLOSU</h1>
+<p>XP, itibar ve rozetlere göre topluluk sıralaması.</p>
+<div class="terminal">&gt; ranking.system.active</div>
+</section>
+
+<div id="leaderboardList"></div>
+
+</main>
+
+<aside class="rightbar">
+<div class="card">
+<h3>🏆 Puan Sistemi</h3>
+<p class="meta">Konu açmak: +20 XP</p>
+<p class="meta">Yorum yapmak: +8 XP</p>
+<p class="meta">Günlük ödül: +10 XP</p>
+<p class="meta">Profil tamamlama: +10 XP</p>
+</div>
+</aside>
+
+</div>
+
+<script>
+let currentUser=null;
+
+async function init(){
+const {data:{user}}=await supabaseClient.auth.getUser();
+if(!user){location.href="login.html";return;}
+currentUser=user;
+loadLeaderboard();
+}
+
+async function loadLeaderboard(){
+const {data,error}=await supabaseClient
+.from("profiles")
+.select("*")
+.order("xp",{ascending:false});
+
+if(error){
+leaderboardList.innerHTML="<div class='card'>"+escapeHtml(error.message)+"</div>";
+return;
+}
+
+leaderboardList.innerHTML=(data||[]).map((u,i)=>`
+<div class="card">
+<div class="activity">
+<img class="avatar" style="width:58px;height:58px" src="${u.avatar_url || 'logo.png'}">
+<div>
+<h3>${i+1}. ${escapeHtml(u.username || "Üye")}</h3>
+<p class="meta">${escapeHtml(u.title || "Üye")} • Seviye ${u.level || 1}</p>
+<p class="meta">${u.xp || 0} XP • ${u.reputation || 0} itibar</p>
+<div class="quick-tags">
+${(u.badges||["Yeni Üye"]).map(b=>`<span>${escapeHtml(b)}</span>`).join("")}
+</div>
+</div>
+</div>
+</div>
+`).join("") || "<div class='card empty'>Liderlik verisi yok.</div>";
+}
+
+async function logout(){
+await supabaseClient.auth.signOut();
+location.href="index.html";
+}
+
+function escapeHtml(text){
+return String(text||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
+}
+
+init();
+</script>
+
+</body>
+</html>

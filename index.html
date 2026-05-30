@@ -5,36 +5,115 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Zeronix Forum</title>
 <link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 </head>
-<body class="auth-body">
+<body>
 
-<div class="auth-shell">
-
-<div class="brand-panel">
-<div class="brand-content">
-<h1><span class="neon">ZERONIX</span><br>FORUM</h1>
-<div class="terminal">
-&gt; system.boot<br>
-&gt; gateway.online<br>
-&gt; access.ready
-</div>
-</div>
+<div id="loader" class="loader-screen">
+<img src="logo.png" class="loader-logo">
+<h1>ZERONIX FORUM</h1>
+<p>Forum yükleniyor...</p>
+<div class="loader-bar"><span></span></div>
 </div>
 
-<div class="auth-card">
-<img src="logo.png" class="auth-logo">
-<div class="logo" style="text-align:center">ZERONIX</div>
-<div class="logo-sub" style="text-align:center">FORUM // ACCESS GATE</div>
+<div id="app" style="display:none">
+<div class="layout">
 
-<h2>Sisteme Giriş</h2>
-<p>Topluluk paneline devam etmek için oturum aç veya yeni hesap oluştur.</p>
+<aside class="sidebar">
+<div class="logo">ZERONIX</div>
+<div class="logo-sub">PUBLIC // FORUM</div>
 
-<a class="btn" href="register.html">Yeni Hesap Oluştur</a>
-<a class="btn" href="login.html" style="background:#1f2937;box-shadow:none">Giriş Yap</a>
-<a class="btn" href="forum.html" style="background:#7f1d1d">Foruma Git</a>
+<div class="menu">
+<a href="index.html">🏠 Ana Sayfa</a>
+<a href="login.html">🔐 Giriş Yap</a>
+<a href="register.html">🧬 Kayıt Ol</a>
+</div>
+</aside>
+
+<main class="main">
+
+<section class="hero">
+<h1><span class="neon">ZERONIX</span> FORUM</h1>
+<p>Konuların başlıklarını herkes görebilir. Detayları okumak ve yazmak için giriş yapmalısın.</p>
+<div class="terminal">&gt; public.index.loaded</div>
+</section>
+
+<div class="topbar">
+<h2>Forum Konuları</h2>
+<div class="actions">
+<a class="btn" href="login.html">Giriş Yap</a>
+<a class="btn" href="register.html" style="background:#1f2937;box-shadow:none">Kayıt Ol</a>
+</div>
 </div>
 
+<div class="card">
+<input id="search" placeholder="Konu başlığı ara..." oninput="loadPublicTopics()">
 </div>
+
+<div id="topics"></div>
+
+</main>
+
+<aside class="rightbar">
+<div class="card profile-mini">
+<img src="logo.png" class="avatar">
+<h3>Zeronix Forum</h3>
+<p class="meta">Başlıklar açık, içerikler üyelere özel.</p>
+</div>
+
+<div class="card">
+<h3>🔥 Topluluk</h3>
+<p class="meta">Konu açmak için hesap oluştur.</p>
+<p class="meta">Yorum yazmak için giriş yap.</p>
+<p class="meta">Profil, XP ve rozet sistemi aktif.</p>
+</div>
+</aside>
+
+</div>
+</div>
+
+<script>
+setTimeout(()=>{
+document.getElementById("loader").style.display="none";
+document.getElementById("app").style.display="block";
+loadPublicTopics();
+},1200);
+
+async function loadPublicTopics(){
+const keyword=document.getElementById("search")?.value?.toLowerCase()||"";
+
+const {data,error}=await supabaseClient
+.from("topics")
+.select("*")
+.order("created_at",{ascending:false});
+
+if(error){
+topics.innerHTML="<div class='card'>"+escapeHtml(error.message)+"</div>";
+return;
+}
+
+let list=data||[];
+
+if(keyword){
+list=list.filter(t=>String(t.title||"").toLowerCase().includes(keyword));
+}
+
+topics.innerHTML=list.map(t=>`
+<div class="card topic" onclick="location.href='topic.html?id=${t.id}'">
+<span class="badge">🔒 Üyelere Özel</span>
+${t.pinned ? '<span class="badge gold">📌 Sabit</span>' : ""}
+<h3>${escapeHtml(t.title)}</h3>
+<p class="meta">Devamını görmek için giriş yap veya kayıt ol.</p>
+<div class="meta">👍 ${t.likes||0} • 👁️ ${t.views||0} • ${new Date(t.created_at).toLocaleString("tr-TR")}</div>
+</div>
+`).join("") || "<div class='card empty'>Henüz konu yok.</div>";
+}
+
+function escapeHtml(text){
+return String(text||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
+}
+</script>
 
 </body>
 </html>

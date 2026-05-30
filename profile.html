@@ -14,14 +14,15 @@
 
 <aside class="sidebar">
 <div class="logo">ZERONIX</div>
-<div class="logo-sub">PROFILE // IDENTITY</div>
+<div class="logo-sub">PROFILE // CENTER</div>
 
 <div class="menu">
-<a href="forum.html">🏠 Ana Panel</a>
+<a href="index.html">🌐 Ana Sayfa</a>
+<a href="forum.html">🏠 Üye Paneli</a>
 <a href="new-topic.html">➕ Konu Aç</a>
 <a href="profile.html">👤 Profil</a>
 <a href="messages.html">💬 Mesajlar</a>
-<a href="admin.html">🛡️ Kontrol Paneli</a>
+<a href="admin.html">🛡️ Admin</a>
 <button onclick="logout()">🚪 Çıkış Yap</button>
 </div>
 </aside>
@@ -29,27 +30,38 @@
 <main class="main">
 
 <section class="hero">
-<h1><span class="neon">PROFİL</span> MERKEZİ</h1>
-<p>Kullanıcı kimliği, seviye, XP, rozetler, imza ve profil bilgileri.</p>
-<div class="terminal">&gt; profile.editor.ready</div>
+<h1><span class="neon">PROFİL</span> PANELİ</h1>
+<p>Profil fotoğrafı, kapak, XP, rozet, itibar ve günlük ödül sistemi.</p>
+<div class="terminal">&gt; profile.module.ready</div>
 </section>
 
 <div class="stats-grid">
-<div class="stat"><b id="levelPreview">1</b><span>Seviye</span></div>
-<div class="stat"><b id="xpPreview">0</b><span>XP Puanı</span></div>
-<div class="stat"><b id="repPreview">0</b><span>İtibar</span></div>
-<div class="stat"><b id="badgeCount">1</b><span>Rozet</span></div>
+<div class="stat"><b id="levelBox">1</b><span>Seviye</span></div>
+<div class="stat"><b id="xpBox">0</b><span>XP</span></div>
+<div class="stat"><b id="repBox">0</b><span>İtibar</span></div>
+<div class="stat"><b id="badgeBox">0</b><span>Rozet</span></div>
 </div>
 
 <div class="card">
-<h2>Profil Bilgileri</h2>
+<h2>Günlük Ödül</h2>
+<p class="meta">Her gün 1 kez +10 XP ve +2 itibar alabilirsin.</p>
+<button class="btn" onclick="claimDaily()">🎁 Günlük Ödülü Al</button>
+<p id="dailyResult" class="meta"></p>
+</div>
+
+<div class="card">
+<h2>Profil Düzenle</h2>
 
 <input id="username" placeholder="Kullanıcı adı">
-<input id="title" placeholder="Özel unvan: örn. Red Team, Analyst, Root Member">
-<input id="avatar_url" placeholder="Profil fotoğrafı URL">
-<input id="cover_url" placeholder="Kapak fotoğrafı URL">
+<input id="title" placeholder="Özel unvan">
 <textarea id="bio" placeholder="Biyografi"></textarea>
 <textarea id="signature" placeholder="İmza"></textarea>
+
+<label class="meta">Profil fotoğrafı yükle</label>
+<input type="file" id="avatarFile" accept="image/*">
+
+<label class="meta">Kapak fotoğrafı URL</label>
+<input id="cover_url" placeholder="Kapak fotoğrafı URL">
 
 <button class="btn" onclick="saveProfile()">Profili Kaydet</button>
 <p id="result" class="meta"></p>
@@ -58,42 +70,34 @@
 </main>
 
 <aside class="rightbar">
-
 <div class="card profile-mini">
-<img id="avatarPreview" class="avatar" src="https://api.dicebear.com/8.x/shapes/svg?seed=zeronix">
+<img id="avatarPreview" class="avatar" src="logo.png">
 <h3 id="namePreview">Kullanıcı</h3>
-<p class="meta" id="titlePreview">Zeronix Üyesi</p>
+<p class="meta" id="titlePreview">Üye</p>
 
 <div class="levelbar"><div id="xpBar"></div></div>
 <p class="meta">XP ilerlemesi</p>
 
-<div class="quick-tags" id="badgesPreview" style="justify-content:center">
+<div class="quick-tags" id="badgesPreview">
 <span>Yeni Üye</span>
 </div>
 </div>
 
 <div class="card">
-<h3>🧬 Başarımlar</h3>
-<p class="meta">İlk konu: +20 XP</p>
-<p class="meta">İlk yorum: +8 XP</p>
-<p class="meta">Profil tamamlama: +30 XP</p>
+<h3>🏆 Rozetler</h3>
+<p class="meta">Kurucu, Admin, Yönetici, Aktif Üye, Profil Tamamlandı</p>
 </div>
-
 </aside>
 
 </div>
 
 <script>
 let currentUser=null;
+let profile=null;
 
 async function init(){
 const {data:{user}}=await supabaseClient.auth.getUser();
-
-if(!user){
-location.href="login.html";
-return;
-}
-
+if(!user){location.href="login.html";return;}
 currentUser=user;
 await loadProfile();
 }
@@ -110,94 +114,107 @@ await supabaseClient.from("profiles").insert({
 id:currentUser.id,
 username:currentUser.email.split("@")[0],
 bio:"Zeronix üyesi",
-avatar_url:"",
 level:1,
 xp:0,
-badges:["Yeni Üye"]
+reputation:0,
+badges:["Yeni Üye"],
+role:"user",
+title:"Üye"
 });
-
-let res=await supabaseClient
-.from("profiles")
-.select("*")
-.eq("id",currentUser.id)
-.single();
-
+let res=await supabaseClient.from("profiles").select("*").eq("id",currentUser.id).single();
 data=res.data;
 }
 
-username.value=data.username || "";
-bio.value=data.bio || "";
-avatar_url.value=data.avatar_url || "";
-title.value=data.title || "";
-cover_url.value=data.cover_url || "";
-signature.value=data.signature || "";
+profile=data;
 
-namePreview.innerText=data.username || "Kullanıcı";
-titlePreview.innerText=data.title || "Zeronix Üyesi";
-avatarPreview.src=data.avatar_url || "https://api.dicebear.com/8.x/shapes/svg?seed="+encodeURIComponent(data.username||"zeronix");
+username.value=data.username||"";
+title.value=data.title||"";
+bio.value=data.bio||"";
+signature.value=data.signature||"";
+cover_url.value=data.cover_url||"";
 
-levelPreview.innerText=data.level || 1;
-xpPreview.innerText=data.xp || 0;
-repPreview.innerText=data.reputation || 0;
+namePreview.innerText=data.username||"Kullanıcı";
+titlePreview.innerText=data.title||"Üye";
+avatarPreview.src=data.avatar_url||"logo.png";
 
-const badges=data.badges || ["Yeni Üye"];
-badgeCount.innerText=badges.length;
+levelBox.innerText=data.level||1;
+xpBox.innerText=data.xp||0;
+repBox.innerText=data.reputation||0;
 
+const badges=data.badges||["Yeni Üye"];
+badgeBox.innerText=badges.length;
 badgesPreview.innerHTML=badges.map(b=>`<span>${escapeHtml(b)}</span>`).join("");
 
-const xp=(data.xp||0)%100;
-xpBar.style.width=xp+"%";
+xpBar.style.width=((data.xp||0)%100)+"%";
 }
 
 async function saveProfile(){
-const payload={
-username:username.value.trim(),
-bio:bio.value.trim(),
-avatar_url:avatar_url.value.trim()
-};
+result.innerText="Kaydediliyor...";
 
-try{
-payload.title=title.value.trim();
-payload.cover_url=cover_url.value.trim();
-payload.signature=signature.value.trim();
-payload.reputation=Number(repPreview.innerText)||0;
-}catch(e){}
+let avatar_url=profile.avatar_url||"";
+const file=avatarFile.files[0];
 
-const {error}=await supabaseClient
-.from("profiles")
-.update(payload)
-.eq("id",currentUser.id);
+if(file){
+const filePath=`${currentUser.id}/${Date.now()}-${file.name}`;
+const upload=await supabaseClient.storage.from("avatars").upload(filePath,file,{upsert:true});
 
-if(error){
-result.innerText=error.message;
+if(upload.error){
+result.innerText=upload.error.message;
 return;
 }
 
-await giveProfileBonus();
+const publicUrl=supabaseClient.storage.from("avatars").getPublicUrl(filePath);
+avatar_url=publicUrl.data.publicUrl;
+}
+
+let badges=profile.badges||["Yeni Üye"];
+if(!badges.includes("Profil Tamamlandı")) badges.push("Profil Tamamlandı");
+
+const newXp=(profile.xp||0)+10;
+const newLevel=Math.max(1,Math.floor(newXp/100)+1);
+
+const {error}=await supabaseClient.from("profiles").update({
+username:username.value.trim(),
+title:title.value.trim(),
+bio:bio.value.trim(),
+signature:signature.value.trim(),
+cover_url:cover_url.value.trim(),
+avatar_url,
+badges,
+xp:newXp,
+level:newLevel,
+last_seen:new Date().toISOString()
+}).eq("id",currentUser.id);
+
+if(error){result.innerText=error.message;return;}
 
 result.innerText="Profil kaydedildi.";
 loadProfile();
 }
 
-async function giveProfileBonus(){
-const {data}=await supabaseClient
-.from("profiles")
-.select("*")
-.eq("id",currentUser.id)
-.single();
+async function claimDaily(){
+const today=new Date().toISOString().slice(0,10);
 
-if(!data)return;
-
-if((data.xp||0)<30){
-await supabaseClient
-.from("profiles")
-.update({
-xp:(data.xp||0)+30,
-level:Math.max(1,Math.floor(((data.xp||0)+30)/100)+1),
-badges:["Yeni Üye","Profil Tamamlandı"]
-})
-.eq("id",currentUser.id);
+if(profile.daily_claimed_at===today){
+dailyResult.innerText="Bugünkü ödül zaten alınmış.";
+return;
 }
+
+const newXp=(profile.xp||0)+10;
+const newRep=(profile.reputation||0)+2;
+const newLevel=Math.max(1,Math.floor(newXp/100)+1);
+
+const {error}=await supabaseClient.from("profiles").update({
+xp:newXp,
+reputation:newRep,
+level:newLevel,
+daily_claimed_at:today
+}).eq("id",currentUser.id);
+
+if(error){dailyResult.innerText=error.message;return;}
+
+dailyResult.innerText="+10 XP ve +2 itibar kazandın.";
+loadProfile();
 }
 
 async function logout(){

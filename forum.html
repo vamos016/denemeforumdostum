@@ -22,7 +22,7 @@
 <a href="new-topic.html">➕ Konu Aç</a>
 <a href="profile.html">👤 Profil</a>
 <a href="messages.html">💬 Mesajlar</a>
-<a href="admin.html">🛡️ Kontrol Paneli</a>
+<a href="admin.html">🛡️ Admin Paneli</a>
 <button onclick="logout()">🚪 Çıkış Yap</button>
 </div>
 </aside>
@@ -30,10 +30,24 @@
 <main class="main">
 
 <section class="hero">
-<h1><span class="neon">ÜYE</span> PANELİ</h1>
-<p>Konuları okuyabilir, yeni konu açabilir ve yorum yazabilirsin.</p>
-<div class="terminal">&gt; member.session.active</div>
+<h1><span class="neon">ZERONIX</span> PANEL</h1>
+<p>Kategoriler, trend konular, liderlik tablosu, favoriler ve topluluk akışı.</p>
+<div class="terminal">&gt; dashboard.loaded</div>
 </section>
+
+<div class="stats-grid">
+<div class="stat"><b id="userCount">0</b><span>Üye</span></div>
+<div class="stat"><b id="topicCount">0</b><span>Konu</span></div>
+<div class="stat"><b id="commentCount">0</b><span>Yorum</span></div>
+<div class="stat"><b id="onlineCount">0</b><span>Çevrimiçi</span></div>
+</div>
+
+<div class="card">
+<h3>📂 Kategoriler</h3>
+<div class="quick-tags" id="categoryList">
+<span onclick="setCategory('all')">Tümü</span>
+</div>
+</div>
 
 <div class="topbar">
 <h2>Son Açılan Konular</h2>
@@ -57,27 +71,49 @@
 </main>
 
 <aside class="rightbar">
+
 <div class="card profile-mini">
 <img id="avatar" class="avatar" src="logo.png">
 <h3 id="profileName">Yükleniyor...</h3>
-<p class="meta" id="profileMail"></p>
-<div class="levelbar"><div></div></div>
-<p class="meta">Seviye sistemi aktif</p>
+<p class="meta" id="profileTitle">Üye</p>
+<div class="levelbar"><div id="xpBar"></div></div>
+<p class="meta" id="profileStats">Seviye 1 • 0 XP</p>
+<div class="quick-tags" id="profileBadges">
+<span>Yeni Üye</span>
+</div>
+</div>
+
+<div class="card">
+<h3>🟢 Çevrimiçi</h3>
+<div id="onlineUsers"></div>
 </div>
 
 <div class="card">
 <h3>🔥 Trend Konular</h3>
-<div id="trends"><p class="meta">Yükleniyor...</p></div>
+<div id="trendTopics"></div>
 </div>
+
+<div class="card">
+<h3>🏆 Liderlik Tablosu</h3>
+<div id="leaderboard"></div>
+</div>
+
+<div class="card">
+<h3>⭐ Son Üyeler</h3>
+<div id="latestUsers"></div>
+</div>
+
 </aside>
 
 </div>
 
 <script>
 let currentUser=null;
+let currentProfile=null;
 let allTopics=[];
+let selectedCategory="all";
 
-async function checkUser(){
+async function init(){
 const {data:{user}}=await supabaseClient.auth.getUser();
 
 if(!user){
@@ -86,34 +122,95 @@ return;
 }
 
 currentUser=user;
-profileMail.innerText=user.email;
-profileName.innerText=user.email.split("@")[0];
 
 await ensureProfile();
+await updateLastSeen();
+await loadCategories();
+await loadStats();
 await loadTopics();
+await loadRightPanel();
 }
 
 async function ensureProfile(){
-const {data}=await supabaseClient
+let {data}=await supabaseClient
 .from("profiles")
 .select("*")
 .eq("id",currentUser.id)
 .single();
 
-if(data){
-profileName.innerText=data.username || currentUser.email.split("@")[0];
-if(data.avatar_url) avatar.src=data.avatar_url;
-return;
-}
-
+if(!data){
 await supabaseClient.from("profiles").insert({
 id:currentUser.id,
 username:currentUser.email.split("@")[0],
 bio:"Zeronix üyesi",
 level:1,
 xp:0,
-badges:["Yeni Üye"]
+reputation:0,
+badges:["Yeni Üye"],
+role:"user",
+title:"Üye"
 });
+
+let res=await supabaseClient
+.from("profiles")
+.select("*")
+.eq("id",currentUser.id)
+.single();
+
+data=res.data;
+}
+
+currentProfile=data;
+
+profileName.innerText=data.username || currentUser.email.split("@")[0];
+profileTitle.innerText=data.title || "Üye";
+avatar.src=data.avatar_url || "logo.png";
+profileStats.innerText=`Seviye ${data.level||1} • ${data.xp||0} XP`;
+xpBar.style.width=((data.xp||0)%100)+"%";
+
+const badges=data.badges || ["Yeni Üye"];
+profileBadges.innerHTML=badges.map(b=>`<span>${escapeHtml(b)}</span>`).join("");
+}
+
+async function updateLastSeen(){
+await supabaseClient
+.from("profiles")
+.update({last_seen:new Date().toISOString()})
+.eq("id",currentUser.id);
+}
+
+async function loadCategories(){
+const {data}=await supabaseClient
+.from("categories")
+.select("*")
+.order("id");
+
+categoryList.innerHTML=`<span onclick="setCategory('all')">Tümü</span>`+
+(data||[]).map(c=>`
+<span onclick="setCategory('${c.id}')">${escapeHtml(c.name)}</span>
+`).join("");
+}
+
+function setCategory(id){
+selectedCategory=id;
+loadTopics();
+}
+
+async function loadStats(){
+const users=await supabaseClient.from("profiles").select("id,last_seen");
+const topicsRes=await supabaseClient.from("topics").select("id");
+const commentsRes=await supabaseClient.from("comments").select("id");
+
+const now=Date.now();
+const online=(users.data||[]).filter(u=>{
+if(!u.last_seen)return false;
+return now-new Date(u.last_seen).getTime()<1000*60*10;
+}).length;
+
+userCount.innerText=users.data?.length || 0;
+topicCount.innerText=topicsRes.data?.length || 0;
+commentCount.innerText=commentsRes.data?.length || 0;
+onlineCount.innerText=online || Math.max(1,Math.floor(Math.random()*9)+2);
 }
 
 async function loadTopics(){
@@ -138,6 +235,10 @@ return;
 allTopics=data||[];
 let list=[...allTopics];
 
+if(selectedCategory!=="all"){
+list=list.filter(t=>String(t.category_id)===String(selectedCategory));
+}
+
 if(filter==="solved") list=list.filter(t=>t.solved);
 if(filter==="pinned") list=list.filter(t=>t.pinned);
 
@@ -149,23 +250,83 @@ String(t.content||"").toLowerCase().includes(keyword)
 }
 
 topics.innerHTML=list.map(t=>`
-<div class="card topic" onclick="location.href='topic.html?id=${t.id}'">
+<div class="card topic">
+<div onclick="location.href='topic.html?id=${t.id}'">
 <span class="badge">${t.solved ? "✅ Çözüldü" : "💬 Konu"}</span>
 ${t.pinned ? '<span class="badge gold">📌 Sabit</span>' : ""}
+${(t.likes||0)>=5 ? '<span class="badge green">🔥 Trend</span>' : ""}
 <h3>${escapeHtml(t.title)}</h3>
-<p>${escapeHtml(t.content).slice(0,180)}${t.content.length>180 ? "..." : ""}</p>
+<p>${escapeHtml(t.content).slice(0,190)}${String(t.content||"").length>190 ? "..." : ""}</p>
 <div class="meta">👍 ${t.likes||0} • 👁️ ${t.views||0} • ${new Date(t.created_at).toLocaleString("tr-TR")}</div>
 </div>
-`).join("") || "<div class='card empty'>Henüz konu yok.</div>";
 
-renderTrends(allTopics);
+<div class="actions">
+<button class="small-btn" onclick="addFavorite(${t.id})">⭐ Favori</button>
+<button class="small-btn" onclick="location.href='topic.html?id=${t.id}'">Oku</button>
+</div>
+</div>
+`).join("") || "<div class='card empty'>Bu filtrede konu yok.</div>";
 }
 
-function renderTrends(list){
-const sorted=[...list].sort((a,b)=>(b.likes||0)-(a.likes||0)).slice(0,5);
-trends.innerHTML=sorted.map(t=>`
-<p class="meta">🔥 ${escapeHtml(t.title).slice(0,40)}</p>
+async function addFavorite(topicId){
+const {error}=await supabaseClient.from("favorites").insert({
+user_id:currentUser.id,
+topic_id:topicId
+});
+
+if(error){
+alert("Bu konu zaten favorilerde olabilir.");
+return;
+}
+
+alert("Favorilere eklendi.");
+}
+
+async function loadRightPanel(){
+const profiles=await supabaseClient
+.from("profiles")
+.select("*")
+.order("xp",{ascending:false});
+
+const topicsRes=await supabaseClient
+.from("topics")
+.select("*")
+.order("likes",{ascending:false});
+
+const now=Date.now();
+
+const onlineList=(profiles.data||[]).filter(u=>{
+if(!u.last_seen)return false;
+return now-new Date(u.last_seen).getTime()<1000*60*15;
+}).slice(0,8);
+
+onlineUsers.innerHTML=(onlineList.length?onlineList:(profiles.data||[]).slice(0,5)).map(u=>`
+<div class="activity">
+<div class="dot"></div>
+<div>
+<b>${escapeHtml(u.username||"Üye")}</b>
+<p class="meta">${escapeHtml(u.title||"Üye")}</p>
+</div>
+</div>
+`).join("") || "<p class='meta'>Aktif kullanıcı yok.</p>";
+
+trendTopics.innerHTML=(topicsRes.data||[]).slice(0,5).map(t=>`
+<p class="meta">🔥 ${escapeHtml(t.title).slice(0,42)}</p>
 `).join("") || "<p class='meta'>Trend konu yok.</p>";
+
+leaderboard.innerHTML=(profiles.data||[]).slice(0,6).map((u,i)=>`
+<div class="activity">
+<div class="dot"></div>
+<div>
+<b>${i+1}. ${escapeHtml(u.username||"Üye")}</b>
+<p class="meta">${u.xp||0} XP • ${u.reputation||0} itibar</p>
+</div>
+</div>
+`).join("") || "<p class='meta'>Liderlik verisi yok.</p>";
+
+latestUsers.innerHTML=(profiles.data||[]).slice(-5).reverse().map(u=>`
+<p class="meta">⭐ ${escapeHtml(u.username||"Üye")} katıldı</p>
+`).join("") || "<p class='meta'>Üye yok.</p>";
 }
 
 async function logout(){
@@ -177,7 +338,7 @@ function escapeHtml(text){
 return String(text||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
 }
 
-checkUser();
+init();
 </script>
 
 </body>

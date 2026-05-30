@@ -17,11 +17,14 @@
 <div class="logo-sub">NEW THREAD // ACCESS</div>
 
 <div class="menu">
-<a href="forum.html">🏠 Ana Panel</a>
+<a href="index.html">🌐 Ana Sayfa</a>
+<a href="forum.html">🏠 Üye Paneli</a>
 <a href="new-topic.html">➕ Konu Aç</a>
+<a href="favorites.html">⭐ Favoriler</a>
+<a href="leaderboard.html">🏆 Liderlik</a>
 <a href="profile.html">👤 Profil</a>
 <a href="messages.html">💬 Mesajlar</a>
-<a href="admin.html">🛡️ Kontrol Paneli</a>
+<a href="admin.html">🛡️ Admin Paneli</a>
 <button onclick="logout()">🚪 Çıkış Yap</button>
 </div>
 </aside>
@@ -110,7 +113,7 @@ return;
 }
 
 category.innerHTML='<option value="">Kategori seç</option>'+(data||[]).map(c=>`
-<option value="${c.id}">${c.name}</option>
+<option value="${c.id}">${escapeHtml(c.name)}</option>
 `).join("");
 }
 
@@ -118,6 +121,10 @@ async function createTopic(){
 const title=document.getElementById("title").value.trim();
 const content=document.getElementById("content").value.trim();
 const category_id=document.getElementById("category").value || null;
+const tagList=document.getElementById("tags").value
+.split(",")
+.map(t=>t.trim())
+.filter(Boolean);
 
 if(!title || !content){
 result.innerText="Başlık ve içerik zorunlu.";
@@ -131,6 +138,7 @@ user_id:currentUser.id,
 category_id,
 title,
 content,
+tags:tagList,
 likes:0,
 dislikes:0,
 views:0,
@@ -165,7 +173,8 @@ await supabaseClient
 .from("profiles")
 .update({
 xp:newXp,
-level:newLevel
+level:newLevel,
+last_seen:new Date().toISOString()
 })
 .eq("id",currentUser.id);
 }
@@ -173,6 +182,10 @@ level:newLevel
 async function logout(){
 await supabaseClient.auth.signOut();
 location.href="index.html";
+}
+
+function escapeHtml(text){
+return String(text||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
 }
 
 init();
